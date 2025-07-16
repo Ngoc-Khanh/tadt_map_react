@@ -1,5 +1,6 @@
 import { routes } from "@/config";
 import { MainLayout } from "@/layouts";
+import ProjectPage from "@/pages/Project";
 import { Navigate, type RouteObject } from "react-router-dom";
 
 export const reactRouter: RouteObject[] = [
@@ -8,11 +9,11 @@ export const reactRouter: RouteObject[] = [
     children: [
       {
         path: routes.root,
-        element: <Navigate to={routes.project} />,
+        element: <Navigate to={routes.projects} />,
       },
       {
-        path: routes.project,
-        element: <div>test</div>,
+        path: routes.projects,
+        element: <ProjectPage />,
       },
       {
         path: routes.projectDetail(":projectId"),
