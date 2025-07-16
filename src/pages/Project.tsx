@@ -1,5 +1,3 @@
 export default function ProjectPage() {
-  return (
-    
-  );
+  return <div>d</div>
 }
