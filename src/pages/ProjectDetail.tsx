@@ -28,9 +28,9 @@ export default function ProjectDetail() {
   if (isImporting) return <ProjectImporting />;
 
   return (
-    <Box className="flex flex-col bg-gray-50 min-h-screen">
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       {/* Enhanced Header */}
-      <Paper elevation={2} className="bg-white border-b border-gray-200">
+      <Paper elevation={2} className="bg-white border-b border-gray-200" sx={{ flexShrink: 0 }}>
         <Box className="px-6 py-4">
           {/* Header Top Row */}
           <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -87,8 +87,22 @@ export default function ProjectDetail() {
       </Paper>
 
       {/* Content Area */}
-      <Box className="flex-1 p-6">
-        <ProjectMainMap projectId={projectId!} />
+      <Box sx={{ flex: 1, p: 1, minHeight: 0 }}>
+        <Paper
+          elevation={2}
+          sx={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: 2,
+            overflow: 'hidden',
+            bgcolor: 'background.paper',
+          }}
+        >
+          <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+            <ProjectMainMap projectId={projectId!} />
+          </Box>
+        </Paper>
       </Box>
     </Box>
   );

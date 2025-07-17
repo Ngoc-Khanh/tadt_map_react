@@ -1,9 +1,10 @@
 import type { ETrangThaiType } from "@/data/enums";
 
 export interface IBlock {
-  package_id: string;
-  ten_goi_thau: string;
+  block_id: string;
+  ten_block: string;
+  zone_id: string;
   trang_thai: ETrangThaiType;
   tien_do_thuc_te: number;
-  nha_thau?: string;
+  loai_block?: string;
 }
