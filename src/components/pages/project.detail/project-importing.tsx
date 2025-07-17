@@ -2,7 +2,7 @@ import { routes } from "@/config";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { useImportState } from "@/hooks/useImportState";
 import { useKMLData } from "@/hooks/useKMLAtom";
-import { ArrowLeft, CloudUpload, Description, Map, Visibility, VisibilityOff } from "@mui/icons-material";
+import { ArrowLeft, CloudUpload, Description, Map } from "@mui/icons-material";
 import { Alert, Box, Button, Chip, Divider, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemSecondaryAction, ListItemText, Paper, Stack, Typography } from "@mui/material";
 import { useCallback } from "react";
 import { TbFile, TbUpload, TbX } from "react-icons/tb";
@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 export function ProjectImporting() {
   const navigate = useNavigate();
   const { closeImport } = useImportState();
-  const { kmlFiles, addKMLFile, removeKMLFile, toggleKMLFileVisibility, clearAllKMLFiles } = useKMLData();
+  const { kmlFiles, addKMLFile, removeKMLFile, clearAllKMLFiles } = useKMLData();
 
   // Use the new upload hook
   const {
@@ -292,18 +292,6 @@ export function ProjectImporting() {
                                     file.status === 'parsing' ? 'warning' : 'default'
                               }
                             />
-                            {file.status === 'success' && (
-                              <IconButton
-                                size="small"
-                                onClick={() => toggleKMLFileVisibility(file.id)}
-                                title={file.visible ? 'Ẩn trên bản đồ' : 'Hiển thị trên bản đồ'}
-                              >
-                                {file.visible ?
-                                  <Visibility sx={{ fontSize: 16 }} /> :
-                                  <VisibilityOff sx={{ fontSize: 16 }} />
-                                }
-                              </IconButton>
-                            )}
                             <IconButton
                               size="small"
                               onClick={() => removeFile(file.id)}

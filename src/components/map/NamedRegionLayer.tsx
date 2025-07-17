@@ -18,7 +18,7 @@ export function NamedRegionLayer({
     const popupContent = `
       <div style="font-family: Arial, sans-serif;">
         <h4 style="margin: 0 0 8px 0; color: #e74c3c; font-size: 16px;">
-          📍 ${namedRegion.name}
+          Block: ${namedRegion.name}
         </h4>
         <p style="margin: 4px 0; font-size: 12px; color: #666;">
           <strong>Đặt tên lúc:</strong> ${namedRegion.createdAt.toLocaleString('vi-VN')}

@@ -57,10 +57,10 @@ export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegion
       >
         <LocationOn sx={{ fontSize: 48, color: 'grey.300', mb: 1 }} />
         <Typography variant="body2" color="text.secondary" textAlign="center">
-          Chưa có vùng nào được đặt tên
+          Chưa có block nào được đặt tên
         </Typography>
         <Typography variant="caption" color="text.secondary" textAlign="center">
-          Click vào vùng trên bản đồ và chọn "Đặt tên vùng này"
+          Click vào block trên bản đồ và chọn "Đặt tên block này"
         </Typography>
       </Paper>
     );
@@ -70,7 +70,7 @@ export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegion
     <Paper elevation={2} sx={{ maxHeight: '400px', overflow: 'hidden' }}>
       <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
         <Typography variant="h6" fontWeight="bold">
-          Các vùng đã đặt tên ({namedRegions.length})
+          Các block đã đặt tên ({namedRegions.length})
         </Typography>
       </Box>
       
@@ -104,7 +104,7 @@ export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegion
                     <Box sx={{ mt: 0.5 }}>
                       <Chip
                         size="small"
-                        label="Vùng được đặt tên"
+                        label="Block được đặt tên"
                         sx={{
                           bgcolor: 'error.light',
                           color: 'white',
@@ -135,7 +135,7 @@ export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegion
                       <Visibility fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Xóa vùng">
+                  <Tooltip title="Xóa block">
                     <IconButton
                       size="small"
                       onClick={(e) => handleDelete(region.id, e)}

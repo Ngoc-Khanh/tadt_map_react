@@ -60,7 +60,7 @@ export function NameRegionDialog({
       PaperProps={{
         sx: {
           borderRadius: 2,
-          minHeight: '300px'
+          minHeight: '300px'  
         }
       }}
     >
@@ -68,7 +68,7 @@ export function NameRegionDialog({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LocationOn color="error" />
           <Typography variant="h6" component="span">
-            Đặt tên vùng đã chọn
+            Đặt tên block đã chọn
           </Typography>
         </Box>
       </DialogTitle>
@@ -76,13 +76,13 @@ export function NameRegionDialog({
       <DialogContent>
         <Box sx={{ mb: 3 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Vùng này sẽ được tô màu đỏ và lưu với tên bạn đặt
+            Block này sẽ được tô màu đỏ và lưu với tên bạn đặt
           </Typography>
           
           {featureInfo && featureInfo.length > 0 && (
             <Box sx={{ mt: 2, mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
-                Thông tin vùng:
+                Thông tin block:
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {featureInfo.map(([key, value]) => (
@@ -101,8 +101,8 @@ export function NameRegionDialog({
         <TextField
           autoFocus
           fullWidth
-          label="Tên vùng"
-          placeholder="Nhập tên cho vùng này..."
+          label="Tên block"
+          placeholder="Nhập tên cho block này..."
           value={regionName}
           onChange={(e) => setRegionName(e.target.value)}
           variant="outlined"
@@ -115,7 +115,7 @@ export function NameRegionDialog({
         />
         
         <Typography variant="caption" color="text.secondary">
-          * Vùng được đặt tên sẽ được highlight màu đỏ trên bản đồ
+          * Block được đặt tên sẽ được highlight màu đỏ trên bản đồ
         </Typography>
       </DialogContent>
       
