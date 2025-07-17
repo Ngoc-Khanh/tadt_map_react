@@ -1,4 +1,5 @@
 import { useBlockWithGeometryInProject, useZoneWithGeometryInProject } from "@/hooks/useMockData";
+import { useNamedRegions } from "@/hooks/useNamedRegions";
 import { getLatLngsFromGeom } from "@/lib/lat-lags-gem";
 import { Box } from "@mui/material";
 import { Map as LeafletMapType } from 'leaflet';
@@ -8,12 +9,14 @@ import { LayerPanel, LayerToggleButton, MapView } from "./main-map";
 export function ProjectMainMap({ projectId }: { projectId: string }) {
   const { data: zoneList } = useZoneWithGeometryInProject(projectId!);
   const { data: blockList } = useBlockWithGeometryInProject(projectId!);
+  const { namedRegions } = useNamedRegions();
   const mapRef = useRef<LeafletMapType | null>(null);
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [visibleZones, setVisibleZones] = useState<Set<string>>(new Set());
   const [visibleBlocks, setVisibleBlocks] = useState<Set<string>>(new Set());
+  const [visibleNamedRegions, setVisibleNamedRegions] = useState<Set<string>>(new Set());
 
   const open = Boolean(anchorEl);
 
@@ -30,6 +33,14 @@ export function ProjectMainMap({ projectId }: { projectId: string }) {
       setVisibleBlocks(new Set(allBlockIds));
     }
   }, [blockList]);
+
+  // Auto-show tất cả named regions từ localStorage
+  useEffect(() => {
+    if (namedRegions && namedRegions.length > 0) {
+      const allRegionIds = namedRegions.map(region => region.block_id);
+      setVisibleNamedRegions(new Set(allRegionIds));
+    }
+  }, [namedRegions]);
 
   const handleTogglePanel = useCallback((event: React.MouseEvent<HTMLElement>) => {
     if (isAnimating) return;
@@ -52,6 +63,15 @@ export function ProjectMainMap({ projectId }: { projectId: string }) {
       const newSet = new Set(prev);
       if (newSet.has(blockId)) newSet.delete(blockId);
       else newSet.add(blockId);
+      return newSet;
+    });
+  }, []);
+
+  const toggleNamedRegionVisibility = useCallback((regionId: string) => {
+    setVisibleNamedRegions((prev: Set<string>) => {
+      const newSet = new Set(prev);
+      if (newSet.has(regionId)) newSet.delete(regionId);
+      else newSet.add(regionId);
       return newSet;
     });
   }, []);
@@ -110,6 +130,9 @@ export function ProjectMainMap({ projectId }: { projectId: string }) {
         onToggleZoneVisibility={toggleZoneVisibility}
         onToggleBlockVisibility={toggleBlockVisibility}
         onNavigateToGeometry={navigateToGeometry}
+        displayedNamedRegions={namedRegions}
+        visibleNamedRegions={visibleNamedRegions}
+        onToggleNamedRegionVisibility={toggleNamedRegionVisibility}
       />
 
       <MapView
@@ -118,6 +141,8 @@ export function ProjectMainMap({ projectId }: { projectId: string }) {
         visibleZones={visibleZones}
         visibleBlocks={visibleBlocks}
         onMapReady={handleMapReady}
+        displayedNamedRegions={namedRegions}
+        visibleNamedRegions={visibleNamedRegions}
       />
     </Box>
   );

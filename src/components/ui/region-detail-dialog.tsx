@@ -27,20 +27,26 @@ interface RegionDetailDialogProps {
   open: boolean;
   onClose: () => void;
   region: NamedRegion | null;
+  color?: string; // Add optional color prop
 }
 
 export function RegionDetailDialog({ 
   open, 
   onClose, 
-  region 
+  region,
+  color = '#e74c3c' // Default color
 }: RegionDetailDialogProps) {
   
   if (!region) return null;
 
   const getGeometryType = () => {
-    if (!region.feature.geometry) return 'Không xác định';
+    if (!region.geometry || region.geometry.length === 0) return 'Không xác định';
     
-    switch (region.feature.geometry.type) {
+    // Get the first geometry type as representative
+    const firstGeom = region.geometry[0];
+    if (!firstGeom) return 'Không xác định';
+    
+    switch (firstGeom.type) {
       case 'Point':
         return 'Điểm';
       case 'LineString':
@@ -54,29 +60,32 @@ export function RegionDetailDialog({
       case 'MultiPoint':
         return 'Nhiều điểm';
       default:
-        return region.feature.geometry.type;
+        return firstGeom.type;
     }
   };
 
   const getCoordinatesInfo = () => {
-    const geometry = region.feature.geometry;
-    if (!geometry || !('coordinates' in geometry)) return null;
+    if (!region.geometry || region.geometry.length === 0) return null;
     
-    const coords = geometry.coordinates as number[];
-    if (geometry.type === 'Point') {
-      return `${(coords[1] as number)?.toFixed(6)}, ${(coords[0] as number)?.toFixed(6)}`;
-    }
+    const firstGeom = region.geometry[0];
+    if (!firstGeom || !firstGeom.coordinates || firstGeom.coordinates.length === 0) return null;
     
-    // For other geometry types, show first coordinate as sample
-    const firstCoord = Array.isArray(coords[0]) ? coords[0][0] : coords[0];
-    if (Array.isArray(firstCoord) && firstCoord.length >= 2) {
-      return `${(firstCoord[1] as number)?.toFixed(6)}, ${(firstCoord[0] as number)?.toFixed(6)} (và nhiều điểm khác)`;
-    }
+    // IGeometry has coordinates as [number, number, number][]
+    const firstCoordSet = firstGeom.coordinates[0];
+    if (!firstCoordSet || firstCoordSet.length < 2) return 'Dữ liệu tọa độ không hợp lệ';
     
-    return 'Dữ liệu tọa độ phức tạp';
+    const [lon, lat] = firstCoordSet;
+    return `${lat?.toFixed(6)}, ${lon?.toFixed(6)}${firstGeom.coordinates.length > 1 ? ' (và nhiều điểm khác)' : ''}`;
   };
 
-  const properties = region.feature.properties || {};
+  // Get properties from the first geometry
+  const getProperties = () => {
+    if (!region.geometry || region.geometry.length === 0) return {};
+    const firstGeom = region.geometry[0];
+    return firstGeom?.properties || {};
+  };
+
+  const properties = getProperties();
   const propertyEntries = Object.entries(properties).filter(([, value]) => 
     value !== null && value !== undefined && value !== ''
   );
@@ -99,7 +108,7 @@ export function RegionDetailDialog({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <LocationOn color="error" />
             <Typography variant="h5" component="span" fontWeight="bold">
-              {region.name}
+              {region.ten_block}
             </Typography>
           </Box>
           <Button
@@ -192,14 +201,14 @@ export function RegionDetailDialog({
                 sx={{ 
                   width: 40, 
                   height: 20, 
-                  bgcolor: region.color, 
+                  bgcolor: color, 
                   border: 1, 
                   borderColor: 'grey.300',
                   borderRadius: 1
                 }} 
               />
               <Typography variant="body2">
-                Màu hiển thị: <strong>{region.color}</strong>
+                Màu hiển thị: <strong>{color}</strong>
               </Typography>
               <Chip 
                 label="Vùng được đặt tên" 

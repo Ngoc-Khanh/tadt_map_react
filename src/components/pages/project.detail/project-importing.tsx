@@ -8,7 +8,7 @@ import { useCallback } from "react";
 import { TbFile, TbUpload, TbX } from "react-icons/tb";
 import { useNavigate } from "react-router-dom";
 
-export function ProjectImporting() {
+export function ProjectImporting({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
   const { closeImport } = useImportState();
   const { kmlFiles, addKMLFile, removeKMLFile, clearAllKMLFiles } = useKMLData();
@@ -388,7 +388,7 @@ export function ProjectImporting() {
               variant="contained"
               size="large"
               startIcon={<Map />}
-              onClick={() => navigate(routes.mapPreview)}
+              onClick={() => navigate(routes.mapPreview(projectId!), { state: { kmlFiles: successfulKMLFiles } })}
               sx={{
                 borderRadius: 2,
                 px: 4,

@@ -8,14 +8,15 @@ import { useKMLData } from "@/hooks/useKMLAtom";
 import { useNamedRegions } from "@/hooks/useNamedRegions";
 import type { NamedRegion } from "@/stores/named-regions.atom";
 import { ArrowBack, CloudUpload, Layers } from "@mui/icons-material";
-import { Box, Button, Paper, Tooltip, Typography, Chip } from "@mui/material";
+import { Box, Button, Chip, Paper, Tooltip, Typography } from "@mui/material";
 import type { Feature } from "geojson";
 import L from 'leaflet';
 import { useRef, useState } from "react";
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 export function MapPreview() {
+  const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { kmlFiles } = useKMLData();
   const { namedRegions, addNamedRegion } = useNamedRegions();
@@ -73,14 +74,22 @@ export function MapPreview() {
     }
   };
 
+  const handleAddToMainMap = () => {
+    // Trong MapPreview, named regions đã hiển thị trực tiếp trên bản đồ
+    // Chỉ cần thông báo cho người dùng
+    console.log('Named regions are already displayed on the map');
+  };
+
   return (
     <Box sx={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', flex: 1, gap: 2, p: 2 }}>
         {/* Left sidebar with named regions */}
         <Box sx={{ width: '320px', flexShrink: 0 }}>
           <NamedRegionsPanel
+            projectId={projectId!}
             onRegionClick={handleRegionClick}
             onRegionDetail={handleRegionDetail}
+            onAddToMainMap={handleAddToMainMap}
           />
         </Box>
 
@@ -115,14 +124,14 @@ export function MapPreview() {
                   <Typography variant="body2" color="text.secondary">
                     Tổng số file được import: {kmlFiles.length}
                   </Typography>
-                  <Chip 
+                  <Chip
                     label={`${successfulFiles.length} thành công`}
                     size="small"
                     color="success"
                     variant="outlined"
                   />
                   {kmlFiles.filter(f => f.status === 'error').length > 0 && (
-                    <Chip 
+                    <Chip
                       label={`${kmlFiles.filter(f => f.status === 'error').length} lỗi`}
                       size="small"
                       color="error"
@@ -130,7 +139,7 @@ export function MapPreview() {
                     />
                   )}
                   {kmlFiles.filter(f => f.status === 'parsing').length > 0 && (
-                    <Chip 
+                    <Chip
                       label={`${kmlFiles.filter(f => f.status === 'parsing').length} đang xử lý`}
                       size="small"
                       color="warning"
@@ -228,39 +237,39 @@ export function MapPreview() {
                   {/* Render Named Region Layers */}
                   {namedRegions.map((region) => (
                     <NamedRegionLayer
-                      key={region.id}
+                      key={region.block_id}
                       namedRegion={region}
                     />
                   ))}
 
                   {/* Thông báo khi không có layer nào hiển thị */}
-                  {kmlFiles.length > 0 && 
-                   kmlFiles.filter(f => f.status === 'success' && f.visible).length === 0 && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        zIndex: 1000,
-                        bgcolor: 'rgba(255, 255, 255, 0.95)',
-                        p: 3,
-                        borderRadius: 2,
-                        boxShadow: 3,
-                        textAlign: 'center',
-                        border: '2px solid',
-                        borderColor: 'warning.main'
-                      }}
-                    >
-                      <Layers sx={{ fontSize: 48, color: 'warning.main', mb: 1 }} />
-                      <Typography variant="h6" color="warning.main" gutterBottom>
-                        Tất cả layers đều đã bị ẩn
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Sử dụng panel "Quản lý Layers" để bật hiển thị các layer
-                      </Typography>
-                    </Box>
-                  )}
+                  {kmlFiles.length > 0 &&
+                    kmlFiles.filter(f => f.status === 'success' && f.visible).length === 0 && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          zIndex: 1000,
+                          bgcolor: 'rgba(255, 255, 255, 0.95)',
+                          p: 3,
+                          borderRadius: 2,
+                          boxShadow: 3,
+                          textAlign: 'center',
+                          border: '2px solid',
+                          borderColor: 'warning.main'
+                        }}
+                      >
+                        <Layers sx={{ fontSize: 48, color: 'warning.main', mb: 1 }} />
+                        <Typography variant="h6" color="warning.main" gutterBottom>
+                          Tất cả layers đều đã bị ẩn
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Sử dụng panel "Quản lý Layers" để bật hiển thị các layer
+                        </Typography>
+                      </Box>
+                    )}
                 </MapContainer>
               ) : (
                 <Box

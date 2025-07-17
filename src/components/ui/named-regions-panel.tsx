@@ -1,27 +1,45 @@
-import {
-  Box,
-  Paper,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  Chip,
-  Divider,
-  Tooltip
-} from '@mui/material';
-import { Delete, Visibility, LocationOn, Info } from '@mui/icons-material';
+import { routes } from '@/config/routes';
+import { useImportState } from '@/hooks/useImportState';
 import { useNamedRegions } from '@/hooks/useNamedRegions';
 import type { NamedRegion } from '@/stores/named-regions.atom';
+import { Delete, Info, LocationOn, Map, Visibility } from '@mui/icons-material';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  IconButton,
+  List,
+  ListItem,
+  ListItemSecondaryAction,
+  ListItemText,
+  Paper,
+  Tooltip,
+  Typography
+} from '@mui/material';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface NamedRegionsPanelProps {
   onRegionClick?: (region: NamedRegion) => void;
   onRegionDetail?: (region: NamedRegion) => void;
+  projectId?: string;
+  onAddToMainMap?: () => void;
 }
 
-export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegionsPanelProps) {
+export function NamedRegionsPanel({ onRegionClick, onRegionDetail, projectId, onAddToMainMap }: NamedRegionsPanelProps) {
   const { namedRegions, removeNamedRegion } = useNamedRegions();
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { closeImport } = useImportState();
+
+  // Debug log để kiểm tra
+  console.log('NamedRegionsPanel Debug:', {
+    projectId,
+    namedRegionsCount: namedRegions.length,
+    namedRegions
+  });
 
   const handleDelete = (regionId: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -38,6 +56,36 @@ export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegion
     event.stopPropagation();
     if (onRegionDetail) {
       onRegionDetail(region);
+    }
+  };
+
+  const handleAddToMainMap = async () => {
+    if (!projectId || namedRegions.length === 0) return;
+
+    try {
+      // If onAddToMainMap callback is provided (for ProjectDetail), use it
+      if (onAddToMainMap) {
+        onAddToMainMap();
+        setSuccessMessage(`Đã thêm ${namedRegions.length} block vào bản đồ chính thành công!`);
+        
+        // Auto-navigate to ProjectDetail page after 1.5 seconds
+        setTimeout(() => {
+          navigate(routes.projectDetail(projectId));
+          closeImport(); // Close import state if applicable
+        }, 1500);
+      } else {
+        // For other components that might need API calls, add logic here
+        setSuccessMessage(`Đã thêm ${namedRegions.length} block vào bản đồ chính thành công!`);
+        
+        // Auto-navigate to ProjectDetail page after 1.5 seconds
+        setTimeout(() => {
+          navigate(routes.projectDetail(projectId));
+          closeImport(); // Close import state if applicable
+        }, 1500);
+      }
+      
+    } catch (error) {
+      console.error('Failed to add blocks to main map:', error);
     }
   };
 
@@ -69,14 +117,46 @@ export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegion
   return (
     <Paper elevation={2} sx={{ maxHeight: '400px', overflow: 'hidden' }}>
       <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
-        <Typography variant="h6" fontWeight="bold">
-          Các block đã đặt tên ({namedRegions.length})
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold">
+            Các block đã đặt tên ({namedRegions.length})
+          </Typography>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<Map />}
+            onClick={handleAddToMainMap}
+            disabled={!projectId || namedRegions.length === 0}
+            sx={{
+              bgcolor: 'white',
+              color: 'primary.main',
+              '&:hover': {
+                bgcolor: 'grey.100'
+              },
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 2
+            }}
+          >
+            {!projectId 
+              ? 'Không có Project ID' 
+              : namedRegions.length === 0 
+                ? 'Chưa có block nào' 
+                : 'Thêm vào bản đồ chính'
+            }
+          </Button>
+        </Box>
       </Box>
       
-      <List sx={{ maxHeight: '320px', overflow: 'auto', p: 0 }}>
+      {successMessage && (
+        <Alert severity="success" sx={{ m: 2, mb: 0 }}>
+          {successMessage}
+        </Alert>
+      )}
+      
+      <List sx={{ maxHeight: '280px', overflow: 'auto', p: 0 }}>
         {namedRegions.map((region, index) => (
-          <Box key={region.id}>
+          <Box key={region.block_id}>
             <ListItem
               onClick={() => handleRegionClick(region)}
               sx={{
@@ -92,7 +172,7 @@ export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegion
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <LocationOn color="error" sx={{ fontSize: 20 }} />
                     <Typography variant="subtitle1" fontWeight="medium">
-                      {region.name}
+                      {region.ten_block}
                     </Typography>
                   </Box>
                 }
@@ -138,7 +218,7 @@ export function NamedRegionsPanel({ onRegionClick, onRegionDetail }: NamedRegion
                   <Tooltip title="Xóa block">
                     <IconButton
                       size="small"
-                      onClick={(e) => handleDelete(region.id, e)}
+                      onClick={(e) => handleDelete(region.block_id, e)}
                       sx={{ color: 'error.main' }}
                     >
                       <Delete fontSize="small" />

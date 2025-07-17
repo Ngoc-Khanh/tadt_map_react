@@ -1,24 +1,26 @@
 import { GeoJSON } from 'react-leaflet';
 import type { NamedRegion } from '@/stores/named-regions.atom';
 import { Layer } from 'leaflet';
-import type { Feature } from 'geojson';
+import type { Feature, GeoJsonTypes } from 'geojson';
 
 interface NamedRegionLayerProps {
   namedRegion: NamedRegion;
   onFeatureClick?: (region: NamedRegion, layer: Layer) => void;
+  color?: string; // Add optional color prop
 }
 
 export function NamedRegionLayer({ 
   namedRegion, 
-  onFeatureClick 
+  onFeatureClick,
+  color = '#e74c3c' // Default color
 }: NamedRegionLayerProps) {
   
   const handleEachFeature = (feature: Feature, layer: Layer) => {
     // Create popup content with region name
     const popupContent = `
       <div style="font-family: Arial, sans-serif;">
-        <h4 style="margin: 0 0 8px 0; color: #e74c3c; font-size: 16px;">
-          Block: ${namedRegion.name}
+        <h4 style="margin: 0 0 8px 0; color: ${color}; font-size: 16px;">
+          Block: ${namedRegion.ten_block}
         </h4>
         <p style="margin: 4px 0; font-size: 12px; color: #666;">
           <strong>Đặt tên lúc:</strong> ${namedRegion.createdAt.toLocaleString('vi-VN')}
@@ -44,14 +46,40 @@ export function NamedRegionLayer({
     }
   };
 
+  // Convert IGeometry[] to GeoJSON FeatureCollection
+  const convertToGeoJSON = () => {
+    if (!namedRegion.geometry || namedRegion.geometry.length === 0) {
+      return null;
+    }
+
+    return {
+      type: 'FeatureCollection' as const,
+      features: namedRegion.geometry.map((geom, index) => ({
+        type: 'Feature' as const,
+        id: `${namedRegion.block_id}-${index}`,
+        geometry: {
+          type: geom.type as GeoJsonTypes,
+          coordinates: geom.coordinates
+        },
+        properties: geom.properties || {}
+      }))
+    };
+  };
+
+  const geoJsonData = convertToGeoJSON();
+
+  if (!geoJsonData) {
+    return null;
+  }
+
   return (
     <GeoJSON
-      key={namedRegion.id}
-      data={namedRegion.feature}
+      key={namedRegion.block_id}
+      data={geoJsonData}
       style={() => ({
-        color: namedRegion.color,
+        color: color,
         weight: 3,
-        fillColor: namedRegion.color,
+        fillColor: color,
         fillOpacity: 0.4,
         opacity: 1,
         dashArray: '5, 5' // Dashed line to distinguish from regular features

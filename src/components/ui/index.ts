@@ -6,3 +6,4 @@ export { NameRegionDialog } from './name-region-dialog';
 export { NamedRegionsPanel } from './named-regions-panel';
 export { RegionDetailDialog } from './region-detail-dialog';
 export { LayerStatsPanel } from './layer-stats-panel';
+export { BlockPackageDialog } from './block-package-dialog';

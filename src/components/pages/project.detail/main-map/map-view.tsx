@@ -2,6 +2,7 @@ import { Map as LeafletMapType } from 'leaflet';
 import { useRef } from "react";
 import { MapContainer, Polygon, TileLayer } from 'react-leaflet';
 import type { IZoneWithGeometry, IBlockWithGeometry } from "@/data/interfaces";
+import type { NamedRegion } from "@/stores/named-regions.atom";
 
 interface MapViewProps {
   zoneList?: IZoneWithGeometry[];
@@ -9,9 +10,19 @@ interface MapViewProps {
   visibleZones: Set<string>;
   visibleBlocks: Set<string>;
   onMapReady?: (map: LeafletMapType) => void;
+  displayedNamedRegions?: NamedRegion[];
+  visibleNamedRegions?: Set<string>;
 }
 
-export function MapView({ zoneList, blockList, visibleZones, visibleBlocks, onMapReady }: MapViewProps) {
+export function MapView({ 
+  zoneList, 
+  blockList, 
+  visibleZones, 
+  visibleBlocks, 
+  onMapReady,
+  displayedNamedRegions,
+  visibleNamedRegions 
+}: MapViewProps) {
   const mapRef = useRef<LeafletMapType | null>(null);
 
   return (
@@ -96,6 +107,34 @@ export function MapView({ zoneList, blockList, visibleZones, visibleBlocks, onMa
                 weight: 2,
                 fillColor: "#F59E0B",
                 fillOpacity: 0.3
+              }}
+            />
+          );
+        });
+      })}
+
+      {/* Hiển thị các named regions */}
+      {displayedNamedRegions?.map((namedRegion) => {
+        // Chỉ hiển thị named region nếu nó có trong visibleNamedRegions
+        if (!visibleNamedRegions?.has(namedRegion.block_id)) return null;
+
+        // Sử dụng geometry từ NamedRegion (đã có format chuẩn IGeometry)
+        return namedRegion.geometry.map((geom, index) => {
+          if (!geom.coordinates || geom.coordinates.length === 0) return null;
+
+          const positions = geom.coordinates.map((coord: [number, number, number]) => 
+            [coord[1], coord[0]] as [number, number]
+          );
+
+          return (
+            <Polygon
+              key={`named-region-${namedRegion.block_id}-${index}`}
+              positions={positions}
+              pathOptions={{
+                color: "#E74C3C",
+                weight: 3,
+                fillColor: "#E74C3C",
+                fillOpacity: 0.4
               }}
             />
           );

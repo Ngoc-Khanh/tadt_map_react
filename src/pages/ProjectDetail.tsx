@@ -1,5 +1,6 @@
 import { ProjectImporting, ProjectMainMap } from "@/components/pages/project.detail";
 import { ErrorDisplay, Loading } from "@/components/ui";
+import { routes } from "@/config";
 import { useImportState } from "@/hooks/useImportState";
 import { useBlocksInProject, useProjectsDetail, useZonesInProject } from "@/hooks/useProjects";
 import { KeyboardArrowLeft, Layers, Refresh } from '@mui/icons-material';
@@ -25,7 +26,7 @@ export default function ProjectDetail() {
     refetchBlocks();
   };
 
-  if (isImporting) return <ProjectImporting />;
+  if (isImporting) return <ProjectImporting projectId={projectId!} />;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -36,7 +37,7 @@ export default function ProjectDetail() {
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Stack direction="row" alignItems="center" spacing={2}>
               <IconButton
-                onClick={() => navigate(-1)}
+                onClick={() => navigate(routes.projects)}
                 sx={{
                   bgcolor: 'primary.50',
                   color: 'primary.main',

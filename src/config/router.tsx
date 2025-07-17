@@ -22,7 +22,7 @@ export const reactRouter: RouteObject[] = [
         element: <ProjectDetail />,
       },
       {
-        path: routes.mapPreview,
+        path: routes.mapPreview(":projectId"),
         element: <MapPreview />
       },
     ],

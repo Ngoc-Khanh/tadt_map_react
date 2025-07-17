@@ -1,6 +1,8 @@
 import type { IBlockWithGeometry, IZoneWithGeometry } from "@/data/interfaces";
-import { Box, Fade, Popper, Typography } from "@mui/material";
+import { Box, Fade, Popper, Typography, Divider } from "@mui/material";
 import { ZoneAccordion } from "./zone-accordion";
+import { NamedRegionsAccordion } from "./named-regions-accordion";
+import type { NamedRegion } from "@/stores/named-regions.atom";
 
 interface LayerPanelProps {
   open: boolean;
@@ -12,6 +14,9 @@ interface LayerPanelProps {
   onToggleZoneVisibility: (zoneId: string) => void;
   onToggleBlockVisibility: (blockId: string) => void;
   onNavigateToGeometry: (geometry: { type: string; coordinates: unknown }[], isPackage?: boolean) => void;
+  displayedNamedRegions?: NamedRegion[];
+  visibleNamedRegions?: Set<string>;
+  onToggleNamedRegionVisibility?: (regionId: string) => void;
 }
 
 export function LayerPanel({
@@ -23,7 +28,10 @@ export function LayerPanel({
   visibleBlocks,
   onToggleZoneVisibility,
   onToggleBlockVisibility,
-  onNavigateToGeometry
+  onNavigateToGeometry,
+  displayedNamedRegions,
+  visibleNamedRegions,
+  onToggleNamedRegionVisibility
 }: LayerPanelProps) {
   return (
     <Popper
@@ -96,6 +104,24 @@ export function LayerPanel({
                 }
               }
             }}>
+              {/* Named Regions Accordion - hiển thị trong nội dung chính */}
+              {displayedNamedRegions && displayedNamedRegions.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <NamedRegionsAccordion
+                    displayedNamedRegions={displayedNamedRegions}
+                    visibleNamedRegions={visibleNamedRegions || new Set()}
+                    onToggleNamedRegionVisibility={onToggleNamedRegionVisibility || (() => {})}
+                    onNavigateToGeometry={onNavigateToGeometry}
+                  />
+                </Box>
+              )}
+
+              {/* Divider between Named Regions and Zone List */}
+              {displayedNamedRegions && displayedNamedRegions.length > 0 && (
+                <Divider sx={{ my: 2 }} />
+              )}
+
+              {/* Zone Accordion List */}
               {zoneList?.map((zone) => (
                 <ZoneAccordion
                   key={zone.zone_id}
