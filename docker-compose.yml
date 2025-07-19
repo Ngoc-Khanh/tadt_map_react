@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  react-app:
+    build: .
+    ports:
+      - '80:80'
+    container_name: react-nginx
+    env_file:
+      - .env
+    environment:
+      - DOMAIN=${DOMAIN}
