@@ -1,6 +1,7 @@
 export const siteConfig = {
   auth: {
     jwt_key: 'access_token',
+    params_token: 'token',
   },
   
   backend: {

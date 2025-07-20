@@ -1,6 +1,5 @@
 import { siteConfig } from "@/config";
-import { getToken, removeToken, setToken } from "@/lib/access-token";
-import { AuthAPI } from "@/services/api/auth.api";
+import { getToken, getTokenFromUrl } from "@/lib/access-token";
 import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 
 const api = axios.create({
@@ -11,7 +10,8 @@ const api = axios.create({
 // Thêm request interceptor để tự động gắn JWT token vào headers
 api.interceptors.request.use(
   async (config) => {
-    const token = await getToken();
+    let token = getTokenFromUrl();
+    token = token || getToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
       baseURL: config.baseURL,
@@ -25,25 +25,11 @@ api.interceptors.request.use(
   }
 );
 
-// Tự động đăng nhập khi gặp lỗi 401
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
       console.log(`[API] Token expired, attempting to refresh...`);
-      try {
-        const res = await AuthAPI.login({
-          UserName: "mapsapi",
-          Password: "123456",
-        });
-        if (res.Token) {
-          setToken(res.Token);
-          return api.request(error.config);
-        }
-      } catch (refreshError) {
-        console.error(`[API] Token refresh failed:`, refreshError);
-        removeToken();
-      }
       return Promise.reject(error);
     }
   }
