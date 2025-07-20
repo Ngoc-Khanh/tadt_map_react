@@ -1,7 +1,7 @@
 import { ProjectAPI } from "@/services/api/project.api"
 import { useQuery } from "@tanstack/react-query"
 
-export const useProjectsList = () => {
+export const useProjectList = () => {
   return useQuery({
     queryKey: ["projects"],
     queryFn: ProjectAPI.getProjectList,
@@ -10,7 +10,7 @@ export const useProjectsList = () => {
   })
 }
 
-export const useProjectsDetail = (projectId: string) => {
+export const useProjectDetail = (projectId: string) => {
   return useQuery({
     queryKey: ['project', projectId],
     queryFn: () => ProjectAPI.getProjectDetailById(projectId),

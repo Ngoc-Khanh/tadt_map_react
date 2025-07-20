@@ -9,8 +9,9 @@ export const ProjectAPI = {
     return APIResponse(res.data);
   },
 
-  async getProjectDetailById(projectId: string) {
+  async getProjectDetailById(projectId: string): Promise<IProjectDetail> {
+    if (!projectId) throw new Error("Project ID is required");
     const res = await apiGet<SRO<IProjectDetail>>(`/c360/project/detail/${projectId}`);
-    return res.data;
+    return APIResponse(res.data);
   },
 };

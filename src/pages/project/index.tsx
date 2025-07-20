@@ -1,9 +1,9 @@
 import { ProjectCard, ProjectError, ProjectLoading } from "@/components/pages/project";
-import { useProjectsList } from "@/hooks";
+import { useProjectList } from "@/hooks";
 import { Box, Container, Typography } from "@mui/material";
 
 export default function ProjectPage() {
-  const { data: projects, isLoading, error } = useProjectsList();
+  const { data: projects, isLoading, error } = useProjectList();
 
   if (isLoading) return <ProjectLoading />;
   if (error) return <ProjectError error={error as Error} />;
