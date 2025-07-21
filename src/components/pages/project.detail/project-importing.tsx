@@ -247,7 +247,7 @@ export function ProjectImporting({ projectId }: IProjectImportingProps) {
                         </ListItemIcon>
                         <ListItemText
                           primary={
-                            <Typography variant="body2" noWrap>
+                            <Typography variant="body2" noWrap component="div">
                               {file.name}
                             </Typography>
                           }

@@ -1,6 +1,6 @@
 import { routes } from "@/config";
 import { MainLayout } from "@/layouts";
-import { ProjectDetailPage, ProjectPage } from "@/pages";
+import { MapPreviewPage, ProjectDetailPage, ProjectPage } from "@/pages";
 import { Navigate, type RouteObject } from "react-router-dom";
 
 export const reactRouter: RouteObject[] = [
@@ -18,6 +18,10 @@ export const reactRouter: RouteObject[] = [
       {
         path: routes.projectDetail(":projectId"),
         element: <ProjectDetailPage />,
+      },
+      {
+        path: routes.mapPreview(":projectId"),
+        element: <MapPreviewPage />,
       }
     ],
   },
