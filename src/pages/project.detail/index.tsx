@@ -1,6 +1,8 @@
 import { ProjectMainMap } from "@/components/pages/project";
+import { ProjectImporting } from "@/components/pages/project.detail";
 import { routes } from "@/config";
 import { usePlanningAreaList } from "@/hooks";
+import { useImportState } from "@/hooks/useImportState";
 import { KeyboardArrowLeft, Layers, Refresh } from "@mui/icons-material";
 import { Box, Button, IconButton, Paper, Stack, Tooltip, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
@@ -9,6 +11,9 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const { data: planningAreaList, isLoading: isLoadingPlanningArea, refetch: refetchPlanningArea } = usePlanningAreaList(projectId!);
+  const { isImporting, openImport } = useImportState();
+
+  if (isImporting) return <ProjectImporting projectId={projectId!} />;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -59,7 +64,7 @@ export default function ProjectDetailPage() {
                     textTransform: 'none',
                     fontWeight: 600,
                   }}
-                // onClick={openImport}
+                  onClick={openImport}
                 >
                   Thêm dữ liệu vào bản đồ
                 </Button>
