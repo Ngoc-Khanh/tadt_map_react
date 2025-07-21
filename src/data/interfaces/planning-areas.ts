@@ -4,12 +4,17 @@ export interface IPlanningArea extends IProjectDetail {
   zones: IZonePlanningArea[];
 }
 
+export interface IGeometryJSON {
+  type: string;
+  coordinates: number[][];
+}
+
 export interface IZonePlanningArea extends IZone {
-  geom: string;
+  geom: IGeometryJSON;
   blocks: IBlockPlanningArea[];
 }
 
 export interface IBlockPlanningArea extends IBlock {
+  geom: IGeometryJSON;
   blocks: IBlockPlanningArea[];
-  geom: string;
 }

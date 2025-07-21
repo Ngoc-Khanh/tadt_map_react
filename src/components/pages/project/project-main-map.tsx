@@ -1,14 +1,13 @@
-import { LayerToggleButton } from "@/components/pages/project/layer-button";
-import type { IPlanningArea } from "@/data/interfaces";
-import { ExpandMore } from "@mui/icons-material";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Fade, Popper, Tooltip, Typography } from "@mui/material";
-import { Map as LeafletMapType } from "leaflet";
-import { useRef, useState } from "react";
-import { TbEye, TbEyeOff, TbZoomScan } from "react-icons/tb";
-import { MapContainer, TileLayer } from "react-leaflet";
+import { LayerPanel, LayerToggleButton } from "@/components/pages/project/layer-button";
+import type { IBlockPlanningArea, IPlanningArea, IZonePlanningArea } from "@/data/interfaces";
+import { Box } from "@mui/material";
+import { LatLngBounds, Map as LeafletMapType } from "leaflet";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { MapContainer, Polygon, Polyline, TileLayer } from "react-leaflet";
 
 interface IProjectMainMapProps {
   planningAreaList?: IPlanningArea;
+  isLoading: boolean;
 }
 
 export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
@@ -16,9 +15,137 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [visibleZones] = useState<Set<string>>(new Set());
+
+  // Khởi tạo với tất cả zones và blocks visible
+  const [visibleZones, setVisibleZones] = useState<Set<string>>(() => {
+    if (!planningAreaList?.zones) return new Set();
+    return new Set(planningAreaList.zones.map(zone => zone.zone_id));
+  });
+
+  const [visibleBlocks, setVisibleBlocks] = useState<Set<string>>(() => {
+    if (!planningAreaList?.zones) return new Set();
+    const blockIds: string[] = [];
+    planningAreaList.zones.forEach(zone => {
+      zone.blocks.forEach(block => blockIds.push(block.block_id));
+    });
+    return new Set(blockIds);
+  });
 
   const open = Boolean(anchorEl);
+
+  // Cập nhật visibility khi dữ liệu planningAreaList thay đổi
+  useEffect(() => {
+    if (planningAreaList?.zones) {
+      const zoneIds = new Set(planningAreaList.zones.map(zone => zone.zone_id));
+      setVisibleZones(zoneIds);
+      const blockIds: string[] = [];
+      planningAreaList.zones.forEach(zone => {
+        zone.blocks.forEach(block => blockIds.push(block.block_id));
+      });
+      setVisibleBlocks(new Set(blockIds));
+    }
+  }, [planningAreaList]);
+
+  // Chuyển đổi coordinates từ GeoJSON sang Leaflet format
+  const convertGeometryToLatLng = useCallback((coordinates: number[][]): [number, number][] => {
+    return coordinates.map(coord => [coord[1], coord[0]] as [number, number]);
+  }, []);
+
+  const handleToggleZoneVisibility = useCallback((zoneId: string) => {
+    setVisibleZones(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(zoneId)) {
+        newSet.delete(zoneId);
+        const zone = planningAreaList?.zones.find(z => z.zone_id === zoneId);
+        if (zone) {
+          zone.blocks.forEach(block => {
+            newSet.delete(block.block_id);
+          });
+          setVisibleBlocks(prevBlocks => {
+            const newBlockSet = new Set(prevBlocks);
+            zone.blocks.forEach(block => newBlockSet.delete(block.block_id));
+            return newBlockSet;
+          });
+        }
+      } else {
+        newSet.add(zoneId);
+      }
+      return newSet;
+    });
+  }, [planningAreaList]);
+
+  // Toggle visibility của block
+  const handleToggleBlockVisibility = useCallback((blockId: string) => {
+    setVisibleBlocks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(blockId)) newSet.delete(blockId);
+      else newSet.add(blockId);
+      return newSet;
+    });
+  }, []);
+
+  // Zoom đến geometry
+  const handleZoomToGeometry = useCallback((coordinates: number[][]) => {
+    if (!mapRef.current || !coordinates || coordinates.length === 0) return;
+    try {
+      const latLngs = convertGeometryToLatLng(coordinates);
+      const bounds = new LatLngBounds(latLngs);
+      mapRef.current.fitBounds(bounds, {
+        padding: [20, 20],
+        maxZoom: 16
+      });
+    } catch (error) {
+      console.error('[ProjectMainMap] Error zooming to geometry:', error);
+    }
+  }, [convertGeometryToLatLng]);
+
+  // Render Zone Polygon
+  const renderZonePolygon = useCallback((zone: IZonePlanningArea) => {
+    if (!visibleZones.has(zone.zone_id) || !zone.geom?.coordinates) return null;
+
+    try {
+      const positions = convertGeometryToLatLng(zone.geom.coordinates);
+      return (
+        <Polygon
+          key={`zone-${zone.zone_id}`}
+          positions={positions}
+          pathOptions={{
+            color: '#2563eb',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.2,
+            weight: 2,
+            opacity: 0.8
+          }}
+        />
+      );
+    } catch (error) {
+      console.error(`[ProjectMainMap] Error rendering zone ${zone.zone_id}:`, error);
+      return null;
+    }
+  }, [visibleZones, convertGeometryToLatLng]);
+
+  // Render Block Polyline
+  const renderBlockPolyline = useCallback((block: IBlockPlanningArea) => {
+    if (!visibleBlocks.has(block.block_id) || !block.geom?.coordinates) return null;
+
+    try {
+      const positions = convertGeometryToLatLng(block.geom.coordinates);
+      return (
+        <Polyline
+          key={`block-${block.block_id}`}
+          positions={positions}
+          pathOptions={{
+            color: '#dc2626',
+            weight: 3,
+            opacity: 0.8
+          }}
+        />
+      );
+    } catch (error) {
+      console.error(`[ProjectMainMap] Error rendering block ${block.block_id}:`, error);
+      return null;
+    }
+  }, [visibleBlocks, convertGeometryToLatLng]);
 
   return (
     <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
@@ -33,164 +160,16 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
         />
       </Box>
 
-      <Popper
+      <LayerPanel
         open={open}
         anchorEl={anchorEl}
-        placement="bottom-start"
-        className='z-[1001]'
-        transition
-        modifiers={[
-          { name: 'offset', options: { offset: [0, 8] } },
-          {
-            name: 'preventOverflow',
-            options: {
-              boundary: 'viewport',
-              padding: 16,
-              altAxis: true,
-              altBoundary: true
-            }
-          },
-          {
-            name: 'flip',
-            options: {
-              fallbackPlacements: ['top-start', 'bottom-end', 'top-end']
-            }
-          }
-        ]}
-      >
-        {({ TransitionProps }) => (
-          <Fade {...TransitionProps} timeout={200}>
-            <Box sx={{
-              bgcolor: 'background.paper',
-              minWidth: 400,
-              maxWidth: 'min(90vw, 500px)',
-              maxHeight: 'min(80vh, 600px)',
-              borderRadius: 3,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-              border: '1px solid',
-              borderColor: 'divider',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* Header */}
-              <Box sx={{ p: 3, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Box className='flex justify-between items-start'>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
-                      Lớp bản đồ
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Quản lý các lớp bản đồ trên bản đồ
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-              {/* Content */}
-              <Box sx={{
-                p: 2,
-                flex: 1,
-                overflowY: 'auto',
-                minHeight: 0,
-                '&::-webkit-scrollbar': { width: 6 },
-                '&::-webkit-scrollbar-track': { bgcolor: 'grey.100', borderRadius: 3 },
-                '&::-webkit-scrollbar-thumb': {
-                  bgcolor: 'grey.400',
-                  borderRadius: 3,
-                  '&:hover': {
-                    bgcolor: 'grey.600'
-                  }
-                }
-              }}>
-                {/* Zone Accordion List */}
-                {planningAreaList?.zones.map((zone) => (
-                  <Accordion key={zone.zone_id}>
-                    <AccordionSummary expandIcon={<ExpandMore />}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="h6">{zone.ten_phan_khu}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 0.5, paddingRight: 1 }}>
-                          <Tooltip title="Hiển thị/Ẩn vùng">
-                            <Button
-                              size="small"
-                              sx={{
-                                minWidth: 32,
-                                height: 32,
-                                p: 0.5,
-                                borderRadius: '50%',
-                                color: visibleZones.has(zone.zone_id) ? 'primary.dark' : 'grey.600',
-                                background: 'transparent',
-                                boxShadow: 'none',
-                                '&:hover': {
-                                  transform: 'scale(1.1)',
-                                  boxShadow: 2,
-                                  borderColor: visibleZones.has(zone.zone_id) ? 'primary.dark' : 'grey.500',
-                                  background: 'transparent'
-                                }
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                // onToggleZoneVisibility(zone.zone_id)
-                              }}
-                            >
-                              {visibleZones.has(zone.zone_id) ? (
-                                <TbEye className='w-4 h-4' />
-                              ) : (
-                                <TbEyeOff className='w-4 h-4' />
-                              )}
-                            </Button>
-                          </Tooltip>
-                          <Tooltip title="Zoom đến vùng">
-                            <Button
-                              size="small"
-                              sx={{
-                                minWidth: 32,
-                                height: 32,
-                                p: 0.5,
-                                borderRadius: '50%',
-                                background: 'transparent',
-                                boxShadow: 'none',
-                                '&:hover': {
-                                  transform: 'scale(1.1)',
-                                  boxShadow: 2,
-                                  borderColor: 'primary.dark',
-                                  background: 'transparent'
-                                }
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                // onNavigateToGeometry(zone.geometry || [], false)
-                              }}
-                            >
-                              <TbZoomScan className='w-4 h-4' />
-                            </Button>
-                          </Tooltip>
-                        </Box>
-                      </Box>
-                    </AccordionSummary>
-
-                    <AccordionDetails sx={{ p: 0 }}>
-                      {zone.blocks.length > 0 ? zone.blocks.map((block) => (
-                        <Box sx={{ pl: 2, pr: 1 }} key={block.block_id}>
-                          <Typography variant="body2">{block.ten_block}</Typography>
-                        </Box>
-                      )) : (
-                        <Box sx={{ p: 2, textAlign: 'center' }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Không có block nào trong vùng này
-                          </Typography>
-                        </Box>
-                      )}
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
-              </Box>
-
-            </Box>
-          </Fade>
-        )}
-      </Popper>
+        planningAreaList={planningAreaList}
+        visibleZones={visibleZones}
+        visibleBlocks={visibleBlocks}
+        handleToggleZoneVisibility={handleToggleZoneVisibility}
+        handleZoomToGeometry={handleZoomToGeometry}
+        handleToggleBlockVisibility={handleToggleBlockVisibility}
+      />
 
       <MapContainer
         ref={mapRef}
@@ -218,6 +197,13 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
           maxZoom={20}
         />
 
+        {/* Render Zone Polygons */}
+        {planningAreaList?.zones.map(zone => renderZonePolygon(zone))}
+
+        {/* Render Block Polylines */}
+        {planningAreaList?.zones.map(zone =>
+          zone.blocks.map(block => renderBlockPolyline(block))
+        )}
       </MapContainer>
     </Box>
   )
