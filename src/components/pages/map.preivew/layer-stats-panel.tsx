@@ -3,12 +3,11 @@ import {
   kmlFilesAtom,
   removeKMLFileAtom,
   toggleKMLFileVisibilityAtom,
-  updateKMLFileColorAtom
+  // updateKMLFileColorAtom
 } from '@/stores/kml.atom'
 import {
   Assignment,
   Close,
-  ColorLens,
   Delete,
   Layers,
   LocationOn,
@@ -145,11 +144,6 @@ const getKMLFileBounds = (file: KMLFile): [[number, number], [number, number]] |
   return null
 }
 
-const colorOptions = [
-  '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
-  '#1abc9c', '#34495e', '#e67e22', '#8e44ad', '#27ae60'
-]
-
 export const LayerStatsPanel: React.FC<LayerStatsPanelProps> = React.memo(({
   open,
   onClose,
@@ -162,7 +156,7 @@ export const LayerStatsPanel: React.FC<LayerStatsPanelProps> = React.memo(({
   const [kmlFiles] = useAtom(kmlFilesAtom)
   const toggleFileVisibility = useSetAtom(toggleKMLFileVisibilityAtom)
   const removeFile = useSetAtom(removeKMLFileAtom)
-  const updateFileColor = useSetAtom(updateKMLFileColorAtom)
+  // const updateFileColor = useSetAtom(updateKMLFileColorAtom)
 
   // Memoize stats calculation để tránh re-calculation không cần thiết
   const stats = React.useMemo(() => calculateLayerStats(kmlFiles), [kmlFiles])
@@ -185,10 +179,6 @@ export const LayerStatsPanel: React.FC<LayerStatsPanelProps> = React.memo(({
       onNavigateToLayer(bounds)
     }
   }, [onNavigateToLayer])
-
-  const handleColorChange = React.useCallback((fileId: string, color: string) => {
-    updateFileColor(fileId, color)
-  }, [updateFileColor])
 
   if (!open) return null
 
@@ -426,64 +416,6 @@ export const LayerStatsPanel: React.FC<LayerStatsPanelProps> = React.memo(({
                                 >
                                   <LocationOn fontSize="small" color="primary" />
                                 </IconButton>
-
-                                {/* Color picker */}
-                                <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                                  <IconButton
-                                    size="small"
-                                    sx={{
-                                      p: 0.5,
-                                      '&:hover + .color-picker-dropdown': {
-                                        display: 'block'
-                                      }
-                                    }}
-                                    title="Thay đổi màu"
-                                  >
-                                    <ColorLens fontSize="small" color="action" />
-                                  </IconButton>
-                                  <Box
-                                    className="color-picker-dropdown"
-                                    sx={{
-                                      position: 'absolute',
-                                      top: '100%',
-                                      left: 0,
-                                      display: 'none',
-                                      backgroundColor: 'white',
-                                      border: 1,
-                                      borderColor: 'grey.300',
-                                      borderRadius: 1,
-                                      p: 0.5,
-                                      boxShadow: 2,
-                                      zIndex: 1000,
-                                      '&:hover': {
-                                        display: 'block'
-                                      }
-                                    }}
-                                  >
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0.5 }}>
-                                      {colorOptions.map((color) => (
-                                        <Box
-                                          key={color}
-                                          sx={{
-                                            width: 20,
-                                            height: 20,
-                                            backgroundColor: color,
-                                            borderRadius: '50%',
-                                            cursor: 'pointer',
-                                            border: file.color === color ? '2px solid black' : '1px solid grey',
-                                            '&:hover': {
-                                              transform: 'scale(1.1)'
-                                            }
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleColorChange(file.id, color)
-                                          }}
-                                        />
-                                      ))}
-                                    </Box>
-                                  </Box>
-                                </Box>
                               </Box>
                             )}
 

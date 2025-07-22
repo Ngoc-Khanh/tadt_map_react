@@ -1,4 +1,4 @@
-import { KMLLayer, LayerStatsPanel } from "@/components/pages/map-preivew";
+import { KMLLayer, LayerStatsPanel } from "@/components/pages/map.preivew";
 import { routes } from "@/config";
 import { useKMLData } from "@/hooks";
 import { ArrowBack, CloudUpload, Layers } from "@mui/icons-material";
@@ -15,6 +15,15 @@ export default function MapPreviewPage() {
   const mapRef = useRef<L.Map | null>(null);
 
   const successfulFiles = kmlFiles.filter((f) => f.status === "success");
+
+  const handleNavigateToLayer = (bounds: [[number, number], [number, number]]) => {
+    if (mapRef.current) {
+      mapRef.current.fitBounds(bounds, {
+        padding: [20, 20],
+        maxZoom: 16
+      });
+    }
+  };
 
   return (
     <Box sx={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -148,9 +157,10 @@ export default function MapPreviewPage() {
 
                   {/* Render KML Layers - chỉ render khi layer được bật visible */}
                   {kmlFiles.map((file, index) => {
-                    if (file.status === 'success' && file.visible && file.data) {
+                    if (file.status === 'success' && file.visible && file.data && projectId) {
                       return (
                         <KMLLayer
+                          projectId={projectId}
                           key={file.id}
                           data={file.data}
                           color={file.color}
@@ -231,9 +241,7 @@ export default function MapPreviewPage() {
                   onRefresh={() => {
                     console.log('Refreshing layer stats...')
                   }}
-                  onNavigateToLayer={() => {
-                    console.log('Navigating to layer...')
-                  }}
+                  onNavigateToLayer={handleNavigateToLayer}
                   isFullPanel={true}
                 />
               </div>

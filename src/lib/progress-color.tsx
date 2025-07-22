@@ -35,3 +35,29 @@ export const getProgressProjectColor = (progress: number) => {
   if (progress >= 20) return 'warning';
   return 'inherit';
 }
+
+// Hàm trả về mã màu hex theo trạng thái và tiến độ thực tế của zone
+export const getZoneColor = (status: ETrangThaiType, tien_do_thuc_te: number) => {
+  // Bảng màu sử dụng mã hex, dễ mở rộng và đồng bộ UI
+  const colorPalette: Record<string, string> = {
+    success: "#4caf50",    // Xanh lá
+    primary: "#1976d2",    // Xanh dương
+    info: "#0288d1",       // Xanh cyan
+    warning: "#ff9800",    // Cam
+    error: "#e74c3c",      // Đỏ
+    default: "#bdbdbd",    // Xám nhạt
+    inherit: "#757575"     // Xám đậm
+  };
+
+  if (status === ETrangThai.COMPLETED) return colorPalette.success;
+  if (status === ETrangThai.PROCESSING) {
+    if (tien_do_thuc_te >= 80) return colorPalette.success;
+    if (tien_do_thuc_te >= 60) return colorPalette.primary;
+    if (tien_do_thuc_te >= 40) return colorPalette.info;
+    if (tien_do_thuc_te >= 20) return colorPalette.warning;
+    return colorPalette.inherit;
+  }
+  if (status === ETrangThai.RETURNED) return colorPalette.error;
+  if (status === ETrangThai.CREATED) return colorPalette.info;
+  return colorPalette.default;
+}

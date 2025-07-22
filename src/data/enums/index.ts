@@ -5,7 +5,7 @@ export const ETrangThai = {
   PROCESSING: "Đang thực hiện",
   CONFIRMED: "Đã xác nhận",
   COMPLETION_APPROVAL: "Chờ duyệt hoàn thành",
-  COMPLETED: "Đã hoàn thành",
+  COMPLETED: "Hoàn thành",
   RETURNED: "Trả lại",
   CLOSED: "Tạm dừng",
 } as const;

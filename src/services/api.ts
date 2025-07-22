@@ -46,7 +46,11 @@ export const apiPost = async <PostData = unknown, ResponseData = unknown>(
   endpoint: string,
   data: PostData,
   config?: AxiosRequestConfig
-) =>
-  api.post<ResponseData, AxiosResponse<ResponseData>>(endpoint, data, config);
+) => api.post<ResponseData, AxiosResponse<ResponseData>>(endpoint, data, config);
+
+export const apiDelete = async <ResponseData = unknown>(
+  endpoint: string,
+  config?: AxiosRequestConfig
+) => api.delete<ResponseData>(endpoint, config);
 
 export default api;

@@ -253,19 +253,19 @@ export function ProjectImporting({ projectId }: IProjectImportingProps) {
                           }
                           secondary={
                             <Box>
-                              <Typography variant="caption" color="text.secondary">
+                              <Typography variant="caption" color="text.secondary" component="div">
                                 {formatFileSize(file.size)}
                               </Typography>
                               {file.status === 'parsing' && (
                                 <Box sx={{ mt: 1 }}>
                                   <LinearProgress sx={{ borderRadius: 1 }} />
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography variant="caption" color="text.secondary" component="div">
                                     Đang phân tích KML...
                                   </Typography>
                                 </Box>
                               )}
                               {file.statistics && (
-                                <Typography variant="caption" color="text.secondary" display="block">
+                                <Typography variant="caption" color="text.secondary" display="block" component="div">
                                   Tổng: {file.statistics.totalFeatures} đối tượng
                                   {file.statistics.points > 0 && ` | Điểm: ${file.statistics.points}`}
                                   {file.statistics.lines > 0 && ` | Đường: ${file.statistics.lines}`}
@@ -273,7 +273,7 @@ export function ProjectImporting({ projectId }: IProjectImportingProps) {
                                 </Typography>
                               )}
                               {file.error && (
-                                <Typography variant="caption" color="error" display="block">
+                                <Typography variant="caption" color="error" display="block" component="div">
                                   Lỗi: {file.error}
                                 </Typography>
                               )}
@@ -321,13 +321,13 @@ export function ProjectImporting({ projectId }: IProjectImportingProps) {
                         </ListItemIcon>
                         <ListItemText
                           primary={
-                            <Typography variant="body2" noWrap>
+                            <Typography variant="body2" noWrap component="div">
                               {file.name}
                             </Typography>
                           }
                           secondary={
                             <Box>
-                              <Typography variant="caption" color="text.secondary">
+                              <Typography variant="caption" color="text.secondary" component="div">
                                 {formatFileSize(file.size)}
                               </Typography>
                               {file.status === 'uploading' && (
@@ -337,13 +337,13 @@ export function ProjectImporting({ projectId }: IProjectImportingProps) {
                                     value={file.progress || 0}
                                     sx={{ borderRadius: 1 }}
                                   />
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography variant="caption" color="text.secondary" component="div">
                                     {file.progress}%
                                   </Typography>
                                 </Box>
                               )}
                               {file.error && (
-                                <Typography variant="caption" color="error" display="block">
+                                <Typography variant="caption" color="error" display="block" component="div">
                                   Lỗi: {file.error}
                                 </Typography>
                               )}
