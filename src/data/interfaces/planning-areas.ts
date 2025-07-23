@@ -15,6 +15,6 @@ export interface IZonePlanningArea extends IZone {
 }
 
 export interface IBlockPlanningArea extends IBlock {
+  block_name: string;
   geom: IGeometryJSON;
-  blocks: IBlockPlanningArea[];
 }

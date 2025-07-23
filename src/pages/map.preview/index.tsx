@@ -1,7 +1,7 @@
 import { KMLLayer, LayerStatsPanel } from "@/components/pages/map.preivew";
 import { routes } from "@/config";
-import { useKMLData } from "@/hooks";
-import { ArrowBack, CloudUpload, Layers } from "@mui/icons-material";
+import { useImportState, useKMLData } from "@/hooks";
+import { ArrowBack, Check, CloudUpload, Layers } from "@mui/icons-material";
 import { Box, Button, Chip, Paper, Tooltip, Typography } from "@mui/material";
 import { useRef, useState } from "react";
 import { MapContainer, TileLayer } from "react-leaflet";
@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 export default function MapPreviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const { closeImport } = useImportState();
   const { kmlFiles } = useKMLData();
   const [showLayerPanel, setShowLayerPanel] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
@@ -99,40 +100,75 @@ export default function MapPreviewPage() {
 
             {/* Map Container */}
             <Box sx={{ flex: 1, position: 'relative' }}>
-              {/* Floating Layer Management Button */}
-              <Tooltip title="Quản lý hiển thị các layer" placement="left">
-                <Button
-                  onClick={() => setShowLayerPanel(!showLayerPanel)}
-                  color="primary"
-                  variant="contained"
-                  size="small"
-                  startIcon={<Layers />}
-                  sx={{
-                    position: 'absolute',
-                    top: 16,
-                    right: 16,
-                    zIndex: 1000,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    px: 2,
-                    '&:hover': {
-                      bgcolor: 'primary.dark',
-                      boxShadow: 4,
-                      transform: 'scale(1.05)'
-                    },
-                    transition: 'all 0.2s ease-in-out'
-                  }}
-                >
-                  {showLayerPanel
-                    ? `Đóng Panel`
-                    : `Quản lý Layers (${kmlFiles.length} layer${kmlFiles.length !== 1 ? 's' : ''})`
-                  }
-                </Button>
-              </Tooltip>
+              {/* Floating Action Buttons Container */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  zIndex: 1000,
+                  display: 'flex',
+                  gap: 1.5,
+                  alignItems: 'center'
+                }}
+              >
+                <Tooltip title="Hoàn thành và quay lại trang chính" placement="bottom">
+                  <Button
+                    onClick={() => {
+                      closeImport();
+                      navigate(routes.projectDetail(projectId!));
+                    }}
+                    color="success"
+                    variant="contained"
+                    size="small"
+                    startIcon={<Check />}
+                    sx={{
+                      borderRadius: 2,
+                      boxShadow: 3,
+                      bgcolor: 'success.main',
+                      color: 'white',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      px: 2.5,
+                      '&:hover': {
+                        bgcolor: 'success.dark',
+                        boxShadow: 4,
+                        transform: 'scale(1.05)'
+                      },
+                      transition: 'all 0.2s ease-in-out'
+                    }}
+                  >
+                    Hoàn thành
+                  </Button>
+                </Tooltip>
+
+                <Tooltip title="Quản lý hiển thị các layer" placement="bottom">
+                  <Button
+                    onClick={() => setShowLayerPanel(!showLayerPanel)}
+                    color="primary"
+                    variant="contained"
+                    size="small"
+                    startIcon={<Layers />}
+                    sx={{
+                      borderRadius: 2,
+                      boxShadow: 3,
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      px: 2.5,
+                      '&:hover': {
+                        bgcolor: 'primary.dark',
+                        boxShadow: 4,
+                        transform: 'scale(1.05)'
+                      },
+                      transition: 'all 0.2s ease-in-out'
+                    }}
+                  >
+                    {showLayerPanel ? 'Đóng Panel' : 'Quản lý Layers'}
+                  </Button>
+                </Tooltip>
+              </Box>
 
               {kmlFiles.length > 0 ? (
                 <MapContainer

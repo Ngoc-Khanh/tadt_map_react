@@ -159,7 +159,7 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
                   <AccordionDetails sx={{ p: 0 }}>
                     {zone.blocks.length > 0 ? zone.blocks.map((block) => (
                       <Box sx={{ pl: 2, pr: 1, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} key={block.block_id}>
-                        <Typography variant="body2">{block.ten_block}</Typography>
+                        <Typography variant="body2">{block.block_name}</Typography>
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
                           <Tooltip title="Hiển thị/Ẩn block">
                             <Button
