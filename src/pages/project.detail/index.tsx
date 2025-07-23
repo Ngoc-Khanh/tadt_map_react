@@ -6,7 +6,6 @@ import { useImportState } from "@/hooks/useImportState";
 import { KeyboardArrowLeft, Layers, Refresh } from "@mui/icons-material";
 import { Box, Button, IconButton, Paper, Stack, Tooltip, Typography } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-
 export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();

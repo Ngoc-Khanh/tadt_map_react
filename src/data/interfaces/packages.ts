@@ -3,4 +3,5 @@ export interface IPackage {
   ten_goi_thau: string;
   trang_thai: string;
   tien_do_thuc_te: number;
+  nha_thau?: string;
 }

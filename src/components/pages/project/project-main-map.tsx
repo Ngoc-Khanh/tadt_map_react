@@ -2,13 +2,18 @@ import { LayerPanel, LayerToggleButton } from "@/components/pages/project/layer-
 import type { ETrangThaiType } from "@/data/enums";
 import type { IBlockPlanningArea, IPlanningArea, IZonePlanningArea } from "@/data/interfaces";
 import { usePackageListByBlockId } from '@/hooks';
-import { getStatusIcon, getZoneColor } from "@/lib/progress-color";
-import { Avatar, Box, Button, Card, CardContent, Chip, Divider, Drawer, IconButton, LinearProgress, List, ListItem, ListItemText, Paper, Popover, Stack, Typography } from "@mui/material";
+import { getZoneColor } from "@/lib/progress-color";
+import { TrendingUp } from "@mui/icons-material";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import WarningIcon from '@mui/icons-material/Warning';
+import { Box, Button, Divider, Drawer, LinearProgress, Paper, Popover, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
 import { LatLngBounds, Map as LeafletMapType, type LeafletMouseEvent } from "leaflet";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LuBlocks, LuPackage, LuX } from "react-icons/lu";
-import { TbProgress } from "react-icons/tb";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MapContainer, Polyline, TileLayer } from "react-leaflet";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface IProjectMainMapProps {
   planningAreaList?: IPlanningArea;
@@ -40,6 +45,29 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
   const [selectedBlock, setSelectedBlock] = useState<IBlockPlanningArea | null>(null);
   const [popupAnchor, setPopupAnchor] = useState<null | { mouseX: number; mouseY: number }>(null);
   const [popupBlock, setPopupBlock] = useState<IBlockPlanningArea | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [searchText, setSearchText] = useState('');
+
+  const statistics = [
+    { label: 'Đang triển khai, đúng tiến độ', count: 15, color: 'info.light', icon: <TaskAltIcon color="info" /> },
+    { label: 'Đang triển khai, chậm tiến độ', count: 20, color: 'warning.light', icon: <WarningIcon color="warning" /> },
+    { label: 'Hoàn thành, đúng tiến độ', count: 14, color: 'success.light', icon: <CheckCircleIcon color="success" /> },
+    { label: 'Hoàn thành, chậm tiến độ', count: 20, color: 'error.light', icon: <ErrorIcon color="error" /> },
+    { label: 'Chưa triển khai', count: 18, color: 'grey.300', icon: <PauseCircleOutlineIcon color="disabled" /> }
+  ];
+
+  // Chuẩn bị data cho PieChart
+  const pieChartData = statistics.map(item => ({
+    name: item.label,
+    value: item.count,
+    color: item.color === 'info.light' ? '#29b6f6' :
+      item.color === 'warning.light' ? '#ffa726' :
+        item.color === 'success.light' ? '#66bb6a' :
+          item.color === 'error.light' ? '#ef5350' : '#bdbdbd'
+  }));
+
+  const COLORS = ['#29b6f6', '#ffa726', '#66bb6a', '#ef5350', '#bdbdbd'];
 
   const open = Boolean(anchorEl);
 
@@ -106,7 +134,7 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
   };
 
   // Sử dụng hook lấy package list
-  const { data: packageList, isLoading: isLoadingPackages } = usePackageListByBlockId(selectedBlock?.block_id || "");
+  const { data: packageList } = usePackageListByBlockId(selectedBlock?.block_id || "");
 
   // Render Zone Polygon
   const renderZonePolygon = useCallback((zone: IZonePlanningArea) => {
@@ -157,18 +185,6 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
       return null;
     }
   }, [visibleBlocks, convertGeometryToLatLng]);
-
-  const renderedZones = useMemo(
-    () => planningAreaList?.zones.map(zone => renderZonePolygon(zone)),
-    [planningAreaList?.zones, renderZonePolygon]
-  );
-  const renderedBlocks = useMemo(
-    () =>
-      planningAreaList?.zones.flatMap(zone =>
-        zone.blocks.map(block => renderBlockPolyline(block))
-      ),
-    [planningAreaList?.zones, renderBlockPolyline]
-  );
 
   return (
     <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
@@ -221,10 +237,10 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
         />
 
         {/* Render Zone Polygons */}
-        {renderedZones}
+        {planningAreaList?.zones.map(zone => renderZonePolygon(zone))}
 
         {/* Render Block Polylines */}
-        {renderedBlocks}
+        {planningAreaList?.zones.map(zone => zone.blocks.map(block => renderBlockPolyline(block)))}
       </MapContainer>
       {/* Popover khi click vào block */}
       <Popover
@@ -239,27 +255,11 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
         PaperProps={{ sx: { p: 2, minWidth: 220 } }}
       >
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          Tên Block: {popupBlock?.block_name}
+          Tên Block: {popupBlock?.ten_block}
         </Typography>
-        {popupBlock?.block_id ? (
-          <Typography variant="body2" color="text.secondary">
-            Mã block: {popupBlock?.block_id}
-          </Typography>
-        ) : (
-          <Box sx={{
-            p: 1.5,
-            bgcolor: 'warning.50',
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'warning.200',
-            mt: 1,
-            textAlign: 'center'
-          }}>
-            <Typography variant="body2" color="warning.dark" fontWeight={500}>
-              Cần gắn thêm mã block
-            </Typography>
-          </Box>
-        )}
+        <Typography variant="body2" color="text.secondary">
+          Mã block: {popupBlock?.block_id}
+        </Typography>
         {typeof popupBlock?.tien_do_thuc_te === 'number' && (
           <Box sx={{ mt: 1 }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -281,259 +281,328 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
             </Typography>
           </Box>
         )}
-        {popupBlock?.block_id && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => {
-                setSelectedBlock(popupBlock);
-                setPopupAnchor(null);
-              }}
-              fullWidth
-            >
-              Xem chi tiết
-            </Button>
-          </>
-        )}
+        <Divider sx={{ my: 1 }} />
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => {
+            setSelectedBlock(popupBlock);
+            setPopupAnchor(null);
+          }}
+          fullWidth
+        >
+          Xem chi tiết
+        </Button>
       </Popover>
       {/* Drawer hiển thị chi tiết block */}
       <Drawer
-        anchor="right"
+        anchor="bottom"
         open={!!selectedBlock}
         onClose={() => setSelectedBlock(null)}
         PaperProps={{
           sx: {
-            width: 450,
-          }
+            height: '85vh',
+            borderTopLeftRadius: 12,
+            borderTopRightRadius: 12,
+            p: 3,
+            overflow: 'auto',
+          },
         }}
       >
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {/* Header */}
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              position: 'relative'
-            }}
-          >
-            <IconButton
-              onClick={() => setSelectedBlock(null)}
-              sx={{
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' }
-              }}
-            >
-              <LuX size={24} color="#667eea" />
-            </IconButton>
-
-            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-              <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)' }}>
-                <LuBlocks size={24} color="#667eea" />
-              </Avatar>
-              <Typography variant="h5" fontWeight={700}>
-                Chi tiết Block
+        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+          Tên Block: {popupBlock?.block_name}
+        </Typography>
+        {popupBlock?.block_id ? (
+          <Typography variant="body2" color="text.secondary">
+            Mã block: {popupBlock?.block_id}
+          </Typography>
+        ) : (
+          <Box sx={{
+            p: 1.5,
+            bgcolor: 'warning.50',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'warning.200',
+            mt: 1,
+            textAlign: 'center'
+          }}>
+            <Typography variant="body2" color="warning.dark" fontWeight={500}>
+              Chưa gắn mã block
+            </Typography>
+          </Box>
+        )}
+        {typeof popupBlock?.tien_do_thuc_te === 'number' && (
+          <Box sx={{ mt: 1 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <TrendingUp sx={{ fontSize: 18, color: 'text.secondary' }} />
+              <Typography variant="body2" fontWeight={600} color="text.secondary">
+                Tiến độ thực hiện
               </Typography>
             </Stack>
-          </Paper>
 
-          {/* Content */}
-          <Box sx={{ flex: 1, p: 3, overflow: 'auto' }}>
-            {selectedBlock && (
-              <>
-                {/* Block Info Card */}
-                <Card
-                  elevation={3}
+            <Box sx={{ position: 'relative', width: '100%' }}>
+              <LinearProgress
+                variant="determinate"
+                value={popupBlock.tien_do_thuc_te}
+                sx={{
+                  height: 16,
+                  borderRadius: 6,
+                  backgroundColor: 'rgba(0,0,0,0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  '& .MuiLinearProgress-bar': {
+                    borderRadius: 6,
+                    background: `linear-gradient(90deg, ${getZoneColor(popupBlock.trang_thai, popupBlock.tien_do_thuc_te)} 0%, ${getZoneColor(popupBlock.trang_thai, popupBlock.tien_do_thuc_te)}aa 100%)`,
+                  }
+                }}
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  pointerEvents: 'none'
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  fontWeight={700}
                   sx={{
-                    mb: 3,
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-                    border: '1px solid rgba(0,0,0,0.05)'
+                    color: 'white',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                    fontSize: 13,
                   }}
                 >
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2, color: '#2c3e50' }}>
-                      Tên Block: {selectedBlock.ten_block}
+                  {popupBlock.tien_do_thuc_te}%
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Phần biểu đồ + thống kê */}
+            <Box sx={{ mt: 2, width: '100%' }}>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                mb: 3
+              }}>
+                <Box sx={{ flex: '0 0 300px' }}>
+                  <Paper
+                    elevation={1}
+                    sx={{
+                      p: 2,
+                      height: '100%'
+                    }}
+                  >
+                    <Typography
+                      fontWeight={600}
+                      gutterBottom
+                    >
+                      Tiến độ phân khu {popupBlock?.ten_block}
                     </Typography>
-
-                    <Stack spacing={2}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                          Mã block:
+                    <Box sx={{ width: '100%', height: 250 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({ percent }) => percent ? `${(percent * 100).toFixed(0)}%` : ''}
+                          >
+                            {pieChartData.map((_entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value, name) => [value, name]}
+                            labelStyle={{ color: '#000' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </Paper>
+                </Box>
+                <Box sx={{ flex: 1, height: '100%' }}>
+                  <Box sx={{
+                    display: 'flex',
+                    gap: 2,
+                    height: '150px'
+                  }}>
+                    {statistics.map((item, i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          flexBasis: '20%',
+                          flex: 1,
+                          bgcolor: item.color,
+                          p: 2,
+                          textAlign: 'center',
+                          justifyContent: 'center',
+                          borderRadius: 1,
+                          boxShadow: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center'
+                        }}
+                      >
+                        {item.icon}
+                        <Typography fontSize={13} fontWeight={500} mt={0.5}>
+                          {item.label}
                         </Typography>
-                        <Chip
-                          label={selectedBlock.block_id}
-                          size="small"
-                          variant="outlined"
-                          sx={{ fontFamily: 'monospace' }}
-                        />
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                          Trạng thái:
+                        <Typography fontSize={20} fontWeight={700}>
+                          {item.count}
                         </Typography>
-                        <Chip
-                          icon={getStatusIcon(selectedBlock.trang_thai)}
-                          label={selectedBlock.trang_thai}
-                          size="small"
-                          variant="outlined"
-                          sx={{ fontFamily: 'monospace', color: getZoneColor(selectedBlock.trang_thai, selectedBlock.tien_do_thuc_te) }}
-                        />
                       </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
+                    ))}
+                  </Box>
+                </Box>
+              </Box>
 
-                {typeof selectedBlock.tien_do_thuc_te === 'number' && (
-                  <Box sx={{ mt: 3 }}>
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                      <TbProgress size={18} color="#667eea" />
-                      <Typography variant="body2" fontWeight={600} color="text.secondary">
-                        Tiến độ thực hiện
-                      </Typography>
-                    </Stack>
+              {/* Phần tìm kiếm */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h6" fontWeight={700}>
+                  Danh sách gói thầu (Phân khu M2-11)
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Tìm kiếm gói thầu..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                  />
+                  <Button variant="contained">Tìm kiếm</Button>
+                </Box>
 
-                    <Box sx={{ position: 'relative' }}>
+              </Box>
+            </Box>
+          </Box>
+        )}
+
+        {/* Bảng */}
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>STT</TableCell>
+                <TableCell>Tên gói thầu</TableCell>
+                <TableCell>Nhà thầu</TableCell>
+                <TableCell>Ngày ký HĐ</TableCell>
+                <TableCell>Ngày kết thúc</TableCell>
+                <TableCell>Trạng thái</TableCell>
+                <TableCell>Tiến trình kế hoạch</TableCell>
+                <TableCell>Tiến trình thực tế</TableCell>
+                <TableCell>Vướng mắc</TableCell>
+                <TableCell>Chỉ đạo</TableCell>
+                <TableCell>Thao tác</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {packageList?.map((item, index) => (
+                <TableRow key={index}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{item.ten_goi_thau || ""}</TableCell>
+                  <TableCell>{item.nha_thau || ""}</TableCell>
+                  <TableCell>{""}</TableCell> {/* Ngày ký HĐ */}
+                  <TableCell>{""}</TableCell> {/* Ngày kết thúc */}
+                  <TableCell>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: getZoneColor(item.trang_thai as ETrangThaiType, item.tien_do_thuc_te)
+                      }}
+                    >
+                      {item.trang_thai || ""}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ position: 'relative', width: '100%' }}>
                       <LinearProgress
                         variant="determinate"
-                        value={selectedBlock.tien_do_thuc_te}
+                        value={0} // giả định 100% kế hoạch
                         sx={{
-                          height: 12,
-                          borderRadius: 6,
-                          backgroundColor: 'rgba(0,0,0,0.08)',
-                          '& .MuiLinearProgress-bar': {
-                            borderRadius: 6,
-                            background: `linear-gradient(90deg, ${getZoneColor(selectedBlock.trang_thai, selectedBlock.tien_do_thuc_te)} 0%, ${getZoneColor(selectedBlock.trang_thai, selectedBlock.tien_do_thuc_te)}aa 100%)`,
+                          height: 8, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.08)', '& .MuiLinearProgress-bar': {
+                            background: `linear-gradient(90deg, ${getZoneColor(item.trang_thai as ETrangThaiType, 0)} 0%, ${getZoneColor(item.trang_thai as ETrangThaiType, 0)}aa 100%)`,
                           }
                         }}
                       />
                       <Typography
                         variant="caption"
-                        fontWeight={700}
                         sx={{
                           position: 'absolute',
                           top: '50%',
                           left: '50%',
                           transform: 'translate(-50%, -50%)',
+                          fontSize: '10px',
+                          fontWeight: 600,
                           color: 'white',
-                          textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                          textShadow: '0 0 2px rgba(255,255,255,0.8)'
                         }}
                       >
-                        {selectedBlock.tien_do_thuc_te}%
+                        0%
                       </Typography>
                     </Box>
-                  </Box>
-                )}
-
-                <Divider sx={{ my: 2 }} />
-
-                <Card
-                  elevation={3}
-                  sx={{
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-                    border: '1px solid rgba(0,0,0,0.05)'
-                  }}
-                >
-                  <CardContent sx={{ p: 0 }}>
-                    <Box sx={{ p: 3, pb: 1 }}>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <LuPackage size={24} color="#667eea" />
-                        <Typography variant="h6" fontWeight={700} color="#2c3e50">
-                          Danh sách gói thầu
-                        </Typography>
-                        <Chip
-                          label={`${packageList?.length || 0} gói thầu`}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ position: 'relative', width: '100%' }}>
+                      <LinearProgress
+                        variant="determinate"
+                        value={item.tien_do_thuc_te}
+                        sx={{
+                          height: 8, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.08)', '& .MuiLinearProgress-bar': {
+                            background: `linear-gradient(90deg, ${getZoneColor(item.trang_thai as ETrangThaiType, item.tien_do_thuc_te)} 0%, ${getZoneColor(item.trang_thai as ETrangThaiType, item.tien_do_thuc_te)}aa 100%)`,
+                          }
+                        }}
+                      />
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          color: 'white',
+                          textShadow: '0 0 2px rgba(255,255,255,0.8)'
+                        }}
+                      >
+                        {item.tien_do_thuc_te}%
+                      </Typography>
                     </Box>
-                    {isLoadingPackages ? (
-                      <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Đang tải...
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <>
-                        {packageList?.length === 0 ? (
-                          <Box sx={{ p: 3, textAlign: 'center' }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Không có gói thầu nào.
-                            </Typography>
-                          </Box>
-                        ) : (
-                          <List sx={{ pt: 0 }}>
-                            {packageList?.map((pkg, index) => (
-                              <React.Fragment key={pkg.package_id}>
-                                <ListItem
-                                  sx={{
-                                    py: 2,
-                                    px: 3,
-                                    '&:hover': {
-                                      backgroundColor: 'rgba(102, 126, 234, 0.04)',
-                                    }
-                                  }}
-                                >
-                                  <ListItemText
-                                    primary={
-                                      <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
-                                        {pkg.ten_goi_thau}
-                                      </Typography>
-                                    }
-                                    secondary={
-                                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
-                                        <Chip
-                                          icon={getStatusIcon(pkg.trang_thai as ETrangThaiType)}
-                                          label={pkg.trang_thai}
-                                          size="small"
-                                        />
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                          <LinearProgress
-                                            variant="determinate"
-                                            value={pkg.tien_do_thuc_te}
-                                            sx={{
-                                              width: 60,
-                                              height: 6,
-                                              borderRadius: 3,
-                                              backgroundColor: 'rgba(0,0,0,0.08)',
-                                              '& .MuiLinearProgress-bar': {
-                                                borderRadius: 3,
-                                                backgroundColor: getZoneColor(pkg.trang_thai as ETrangThaiType, pkg.tien_do_thuc_te),
-                                              }
-                                            }}
-                                          />
-                                          <Typography
-                                            variant="caption"
-                                            fontWeight={600}
-                                            sx={{ color: getZoneColor(pkg.trang_thai as ETrangThaiType, pkg.tien_do_thuc_te) }}
-                                          >
-                                            {pkg.tien_do_thuc_te}%
-                                          </Typography>
-                                        </Box>
-                                      </Stack>
-                                    }
-                                  />
-                                </ListItem>
-                                {index < packageList.length - 1 && <Divider sx={{ mx: 3 }} />}
-                              </React.Fragment>
-                            ))}
-                          </List>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </Box>
-        </Box>
+                  </TableCell>
+                  <TableCell>{""}</TableCell> {/* Vướng mắc */}
+                  <TableCell>{""}</TableCell> {/* Chỉ đạo */}
+                  <TableCell>
+                    <Button variant="text" size="small">Xem</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <TablePagination
+          component="div"
+          count={packageList?.length || 0}
+          page={page}
+          onPageChange={(_event, newPage) => setPage(newPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0); // reset về trang đầu
+          }}
+          labelRowsPerPage="Số dòng / trang:"
+          rowsPerPageOptions={[5, 10, 25, { label: 'Tất cả', value: -1 }]}
+        />
       </Drawer>
     </Box>
   )
