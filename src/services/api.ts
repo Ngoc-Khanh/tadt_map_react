@@ -4,7 +4,7 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 import { AuthAPI } from "./api/auth.api";
 
 const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL}/api`,
+  baseURL: siteConfig.backend.base_url,
   headers: siteConfig.backend.base_headers,
 });
 
