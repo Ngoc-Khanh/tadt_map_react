@@ -29,7 +29,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401 || error.response?.status === 500 && error.response.data?.message === "API C360 báo lỗi: Invalid token") {
+    if (error.response?.status === 401 || error.response?.status === 500 && error.response.data?.message === "API C360 báo lỗi: Invalid token" || error.response.status === 400 && error.response.data?.message === "Thiếu header Authorization") {
       console.log(`[API] Token expired, attempting to refresh...`);
       try {
         const res = await AuthAPI.login({
