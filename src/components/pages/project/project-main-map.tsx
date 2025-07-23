@@ -1,12 +1,20 @@
 import { LayerPanel, LayerToggleButton } from "@/components/pages/project/layer-button";
-import type { IBlockPlanningArea, IPlanningArea, IZonePlanningArea } from "@/data/interfaces";
+import type { IBlockPlanningArea, IPackage, IPlanningArea, IZonePlanningArea } from "@/data/interfaces";
 import { usePackageListByBlockId } from '@/hooks';
 import { getZoneColor } from "@/lib/progress-color";
-import { Box, Button, Divider, Drawer, LinearProgress, Popover, Typography } from "@mui/material";
+import { PackageAPI } from "@/services/api/package.api";
+import { Close } from "@mui/icons-material";
+
+import { Box, Button, Divider, Drawer, Grid, IconButton, LinearProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
 import { LatLngBounds, Map as LeafletMapType, type LeafletMouseEvent } from "leaflet";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapContainer, Polygon, Polyline, TileLayer } from "react-leaflet";
 
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningIcon from '@mui/icons-material/Warning';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import ErrorIcon from '@mui/icons-material/Error';
+import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
 interface IProjectMainMapProps {
   planningAreaList?: IPlanningArea;
   isLoading: boolean;
@@ -37,6 +45,34 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
   const [selectedBlock, setSelectedBlock] = useState<IBlockPlanningArea | null>(null);
   const [popupAnchor, setPopupAnchor] = useState<null | { mouseX: number; mouseY: number }>(null);
   const [popupBlock, setPopupBlock] = useState<IBlockPlanningArea | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [packages, setPackages] = useState<IPackage[]>([]);
+  const [searchText, setSearchText] = useState('');
+
+  const statistics = [
+    { label: 'Đang triển khai, đúng tiến độ', count: 15, color: 'info.light', icon: <TaskAltIcon color="info" /> },
+    { label: 'Đang triển khai, chậm tiến độ', count: 20, color: 'warning.light', icon: <WarningIcon color="warning" /> },
+    { label: 'Hoàn thành, đúng tiến độ', count: 14, color: 'success.light', icon: <CheckCircleIcon color="success" /> },
+    { label: 'Hoàn thành, chậm tiến độ', count: 20, color: 'error.light', icon: <ErrorIcon color="error" /> },
+    { label: 'Chưa triển khai', count: 18, color: 'grey.300', icon: <PauseCircleOutlineIcon color="disabled" /> }
+  ];
+
+  const dataTable = [
+    {
+      stt: 1,
+      name: "Khảo sát địa hình – địa chất công trình",
+      contractor: "Công ty khảo sát ABC",
+      start: "05/06/2023",
+      end: "28/06/2023",
+      status: "Hoàn thành, đúng tiến độ",
+      plan: 100,
+      actual: 100,
+      issue: "Không",
+      directive: "Không"
+    }
+  ].filter(row => row.name.toLowerCase().includes(searchText.toLowerCase()));
+
 
   const open = Boolean(anchorEl);
 
@@ -97,10 +133,22 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
   }, [convertGeometryToLatLng]);
 
   // Khi click vào block, mở popup
-  const handleBlockClick = (block: IBlockPlanningArea, e: LeafletMouseEvent) => {
+  const handleBlockClick = async (block: IBlockPlanningArea, e: LeafletMouseEvent) => {
+    console.log("Thông tin block: ", block);
+
+    try {
+      const resp = await PackageAPI.getPackageListByBlockId(block.block_id);
+      console.log("Danh sách gói thầu:", resp);
+      // Có thể set vào state nếu cần
+      setPackages(resp);
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách gói thầu:", error);
+    }
+
     setPopupBlock(block);
     setPopupAnchor({ mouseX: e.originalEvent.clientX, mouseY: e.originalEvent.clientY });
   };
+
 
   // Sử dụng hook lấy package list
   const { data: packageList, isLoading: isLoadingPackages } = usePackageListByBlockId(selectedBlock?.block_id || "");
@@ -169,6 +217,7 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
         />
       </Box>
 
+      {/* Menu layer */}
       <LayerPanel
         open={open}
         anchorEl={anchorEl}
@@ -180,6 +229,7 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
         handleToggleBlockVisibility={handleToggleBlockVisibility}
       />
 
+      {/*Map*/}
       <MapContainer
         ref={mapRef}
         center={[21.0285, 105.8542]}
@@ -212,58 +262,157 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
         {/* Render Block Polylines */}
         {planningAreaList?.zones.map(zone => zone.blocks.map(block => renderBlockPolyline(block)))}
       </MapContainer>
-      {/* Popover khi click vào block */}
-      <Popover
+
+      {/* Hiển thị table */}
+      <Drawer
+        anchor="bottom"
         open={!!popupAnchor}
-        anchorReference="anchorPosition"
-        anchorPosition={
-          popupAnchor
-            ? { top: popupAnchor.mouseY, left: popupAnchor.mouseX }
-            : undefined
-        }
         onClose={() => setPopupAnchor(null)}
-        PaperProps={{ sx: { p: 2, minWidth: 220 } }}
+        PaperProps={{
+          sx: {
+            height: '75vh',
+            borderTopLeftRadius: 12,
+            borderTopRightRadius: 12,
+            p: 3,
+            overflow: 'auto',
+          },
+        }}
       >
-        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          Tên Block: {popupBlock?.ten_block}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Mã block: {popupBlock?.block_id}
-        </Typography>
-        {typeof popupBlock?.tien_do_thuc_te === 'number' && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-              Tiến độ:
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={popupBlock.tien_do_thuc_te}
-              sx={{
-                height: 8,
-                borderRadius: 4,
-                '& .MuiLinearProgress-bar': {
-                  backgroundColor: getZoneColor(popupBlock.trang_thai, popupBlock.tien_do_thuc_te),
-                }
-              }}
-            />
-            <Typography variant="caption" sx={{ color: getZoneColor(popupBlock.trang_thai, popupBlock.tien_do_thuc_te) }}>
-              {popupBlock.tien_do_thuc_te}%
-            </Typography>
-          </Box>
-        )}
-        <Divider sx={{ my: 1 }} />
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => {
-            setSelectedBlock(popupBlock);
-            setPopupAnchor(null);
-          }}
-          fullWidth
+        <IconButton
+          sx={{ position: 'absolute', top: 8, right: 8 }}
+          onClick={() => setPopupAnchor(null)}
         >
-          Xem chi tiết
-        </Button>
-      </Popover>
+          <Close />
+        </IconButton>
+
+        {/* Phần biểu đồ + thống kê */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={4}>
+            <Paper elevation={1} sx={{ p: 2, height: '100%' }}>
+              <Typography fontWeight={600} gutterBottom>Tiến độ phân khu M2-11</Typography>
+              {/* <MyPieChartComponent data={pieChartData} /> */}
+            </Paper>
+          </Grid>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {statistics.map((item, i) => (
+              <Box
+                key={i}
+                sx={{
+                  flexBasis: '20%',
+                  flex: 1,
+                  bgcolor: item.color,
+                  p: 2,
+                  textAlign: 'center',
+                  borderRadius: 1,
+                  boxShadow: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center'
+                }}
+              >
+                {item.icon}
+                <Typography fontSize={13} fontWeight={500} mt={0.5}>{item.label}</Typography>
+                <Typography fontSize={20} fontWeight={700}>{item.count}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </Grid>
+
+        {/* Phần tìm kiếm */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h6" fontWeight={700}>
+            Danh sách gói thầu (Phân khu M2-11)
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              size="small"
+              placeholder="Tìm kiếm gói thầu..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            <Button variant="contained">Tìm kiếm</Button>
+          </Box>
+        </Box>
+
+        {/* Bảng */}
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>STT</TableCell>
+                <TableCell>Tên gói thầu</TableCell>
+                <TableCell>Nhà thầu</TableCell>
+                <TableCell>Ngày ký HĐ</TableCell>
+                <TableCell>Ngày kết thúc</TableCell>
+                <TableCell>Trạng thái</TableCell>
+                <TableCell>Tiến trình kế hoạch</TableCell>
+                <TableCell>Tiến trình thực tế</TableCell>
+                <TableCell>Vướng mắc</TableCell>
+                <TableCell>Chỉ đạo</TableCell>
+                <TableCell>Thao tác</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {packages.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell>{index + 1}</TableCell> {/* STT */}
+                  <TableCell>{row.ten_goi_thau || ""}</TableCell>
+                  <TableCell>{""}</TableCell> {/* Nhà thầu - không có trong IPackage */}
+                  <TableCell>{""}</TableCell> {/* Ngày ký HĐ */}
+                  <TableCell>{""}</TableCell> {/* Ngày kết thúc */}
+                  <TableCell>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color:
+                          row.trang_thai?.includes("đúng") ? "green" :
+                            row.trang_thai?.includes("chậm") ? "orange" :
+                              "gray"
+                      }}
+                    >
+                      {row.trang_thai || ""}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <LinearProgress
+                      variant="determinate"
+                      value={100} // giả định 100% kế hoạch
+                      sx={{ height: 8, borderRadius: 4 }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <LinearProgress
+                      variant="determinate"
+                      value={row.tien_do_thuc_te ?? 0}
+                      sx={{ height: 8, borderRadius: 4 }}
+                    />
+                  </TableCell>
+                  <TableCell>{""}</TableCell> {/* Vướng mắc */}
+                  <TableCell>{""}</TableCell> {/* Chỉ đạo */}
+                  <TableCell>
+                    <Button variant="text" size="small">Xem</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+
+          </Table>
+        </TableContainer>
+        <TablePagination
+          component="div"
+          count={dataTable.length}
+          page={page}
+          onPageChange={(event, newPage) => setPage(newPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0); // reset về trang đầu
+          }}
+          labelRowsPerPage="Số dòng / trang:"
+          rowsPerPageOptions={[5, 10, 25, { label: 'Tất cả', value: -1 }]}
+        />
+      </Drawer>
+
       {/* Drawer hiển thị chi tiết block */}
       <Drawer
         anchor="right"
