@@ -14,13 +14,14 @@ import { LatLngBounds, Map as LeafletMapType, type LeafletMouseEvent } from "lea
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapContainer, Polyline, TileLayer } from "react-leaflet";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { ProjectLoading } from "./project-loading";
 
 interface IProjectMainMapProps {
   planningAreaList?: IPlanningArea;
   isLoading: boolean;
 }
 
-export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
+export function ProjectMainMap({ planningAreaList, isLoading }: IProjectMainMapProps) {
   const mapRef = useRef<LeafletMapType | null>(null);
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -88,6 +89,138 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
   const convertGeometryToLatLng = useCallback((coordinates: number[][]): [number, number][] => {
     return coordinates.map(coord => [coord[1], coord[0]] as [number, number]);
   }, []);
+
+  // Tính toán center từ dữ liệu planningAreaList
+  const calculateMapCenter = useCallback((): [number, number] => {
+    if (!planningAreaList?.zones || planningAreaList.zones.length === 0) {
+      return [21.0285, 105.8542]; // Default Hà Nội
+    }
+
+    try {
+      const allCoordinates: [number, number][] = [];
+      
+      // Lấy coordinates từ zones
+      planningAreaList.zones.forEach(zone => {
+        if (zone.geom?.coordinates && zone.geom.coordinates.length > 0) {
+          const zoneCoords = convertGeometryToLatLng(zone.geom.coordinates);
+          allCoordinates.push(...zoneCoords);
+        }
+      });
+
+      // Nếu zones không có coordinates, lấy từ blocks
+      if (allCoordinates.length === 0) {
+        planningAreaList.zones.forEach(zone => {
+          zone.blocks.forEach(block => {
+            if (block.geom?.coordinates && block.geom.coordinates.length > 0) {
+              const blockCoords = convertGeometryToLatLng(block.geom.coordinates);
+              allCoordinates.push(...blockCoords);
+            }
+          });
+        });
+      }
+
+      if (allCoordinates.length > 0) {
+        // Tính trung bình của tất cả coordinates
+        const sumLat = allCoordinates.reduce((sum, coord) => sum + coord[0], 0);
+        const sumLng = allCoordinates.reduce((sum, coord) => sum + coord[1], 0);
+        return [sumLat / allCoordinates.length, sumLng / allCoordinates.length];
+      }
+    } catch (error) {
+      console.error('[ProjectMainMap] Error calculating center:', error);
+    }
+
+    return [21.0285, 105.8542]; // Fallback to Hà Nội
+  }, [planningAreaList, convertGeometryToLatLng]);
+
+  // Tính toán zoom level phù hợp
+  const calculateInitialZoom = useCallback((): number => {
+    if (!planningAreaList?.zones || planningAreaList.zones.length === 0) {
+      return 10; // Default zoom
+    }
+
+    try {
+      const allCoordinates: [number, number][] = [];
+      
+      planningAreaList.zones.forEach(zone => {
+        if (zone.geom?.coordinates && zone.geom.coordinates.length > 0) {
+          const zoneCoords = convertGeometryToLatLng(zone.geom.coordinates);
+          allCoordinates.push(...zoneCoords);
+        }
+      });
+
+      if (allCoordinates.length === 0) {
+        planningAreaList.zones.forEach(zone => {
+          zone.blocks.forEach(block => {
+            if (block.geom?.coordinates && block.geom.coordinates.length > 0) {
+              const blockCoords = convertGeometryToLatLng(block.geom.coordinates);
+              allCoordinates.push(...blockCoords);
+            }
+          });
+        });
+      }
+
+      if (allCoordinates.length > 0) {
+        // Tính khoảng cách để xác định zoom level phù hợp
+        const lats = allCoordinates.map(coord => coord[0]);
+        const lngs = allCoordinates.map(coord => coord[1]);
+        const latRange = Math.max(...lats) - Math.min(...lats);
+        const lngRange = Math.max(...lngs) - Math.min(...lngs);
+        const maxRange = Math.max(latRange, lngRange);
+        
+        // Tính zoom dựa trên range
+        if (maxRange > 1) return 8;
+        if (maxRange > 0.1) return 11;
+        if (maxRange > 0.01) return 13;
+        return 15;
+      }
+    } catch (error) {
+      console.error('[ProjectMainMap] Error calculating zoom:', error);
+    }
+
+    return 10; // Default zoom
+  }, [planningAreaList, convertGeometryToLatLng]);
+
+      // Fine-tune bounds sau khi map đã khởi tạo với center và zoom phù hợp
+  useEffect(() => {
+    if (!mapRef.current || !planningAreaList?.zones || planningAreaList.zones.length === 0) return;
+
+    try {
+      // Lấy tất cả coordinates từ zones và blocks
+      const allCoordinates: [number, number][] = [];
+      
+      planningAreaList.zones.forEach(zone => {
+        if (zone.geom?.coordinates && zone.geom.coordinates.length > 0) {
+          const zoneCoords = convertGeometryToLatLng(zone.geom.coordinates);
+          allCoordinates.push(...zoneCoords);
+        }
+        
+        zone.blocks.forEach(block => {
+          if (block.geom?.coordinates && block.geom.coordinates.length > 0) {
+            const blockCoords = convertGeometryToLatLng(block.geom.coordinates);
+            allCoordinates.push(...blockCoords);
+          }
+        });
+      });
+
+      if (allCoordinates.length > 0) {
+        const bounds = new LatLngBounds(allCoordinates);
+        
+        // Delay để map khởi tạo xong với center/zoom mới, sau đó fine-tune bounds
+        setTimeout(() => {
+          if (mapRef.current) {
+            mapRef.current.fitBounds(bounds, {
+              padding: [30, 30],
+              maxZoom: 16,
+              animate: true,
+              duration: 1.0
+            });
+          }
+        }, 500); // Tăng delay để map khởi tạo xong
+      }
+    } catch (error) {
+      console.error('[ProjectMainMap] Error fine-tuning bounds:', error);
+    }
+  }, [planningAreaList, convertGeometryToLatLng]);
 
   // Sửa lại: chỉ tắt zone, không tắt block khi tắt zone
   const handleToggleZoneVisibility = useCallback((zoneId: string) => {
@@ -186,6 +319,8 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
     }
   }, [visibleBlocks, convertGeometryToLatLng]);
 
+  if (isLoading) return <ProjectLoading />
+
   return (
     <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <Box className="absolute top-2 left-2 z-[1000]">
@@ -212,8 +347,8 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
 
       <MapContainer
         ref={mapRef}
-        center={[21.0285, 105.8542]}
-        zoom={10}
+        center={calculateMapCenter()}
+        zoom={calculateInitialZoom()}
         style={{
           height: '100%',
           width: '100%',
@@ -255,11 +390,27 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
         PaperProps={{ sx: { p: 2, minWidth: 220 } }}
       >
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          Tên Block: {popupBlock?.ten_block}
+          Tên Block: {popupBlock?.block_name}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Mã block: {popupBlock?.block_id}
-        </Typography>
+        {popupBlock?.block_id ? (
+          <Typography variant="body2" color="text.secondary">
+            Mã block: {popupBlock?.block_id}
+          </Typography>
+        ) : (
+          <Box sx={{
+            p: 1.5,
+            bgcolor: 'warning.50',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'warning.200',
+            mt: 1,
+            textAlign: 'center'
+          }}>
+            <Typography variant="body2" color="warning.dark" fontWeight={500}>
+              Chưa gắn mã block
+            </Typography>
+          </Box>  
+        )}
         {typeof popupBlock?.tien_do_thuc_te === 'number' && (
           <Box sx={{ mt: 1 }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -281,18 +432,22 @@ export function ProjectMainMap({ planningAreaList }: IProjectMainMapProps) {
             </Typography>
           </Box>
         )}
-        <Divider sx={{ my: 1 }} />
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => {
-            setSelectedBlock(popupBlock);
-            setPopupAnchor(null);
-          }}
-          fullWidth
-        >
-          Xem chi tiết
-        </Button>
+        {popupBlock?.block_id && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => {
+                setSelectedBlock(popupBlock);
+                setPopupAnchor(null);
+              }}
+              fullWidth
+            >
+              Xem chi tiết
+            </Button>
+          </>
+        )}
       </Popover>
       {/* Drawer hiển thị chi tiết block */}
       <Drawer
