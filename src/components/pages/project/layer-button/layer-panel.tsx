@@ -1,20 +1,65 @@
-import type { IPlanningArea } from "@/data/interfaces";
+import type { IPlanningArea, IBlockPlanningArea } from "@/data/interfaces";
 import { ExpandMore } from "@mui/icons-material";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Fade, Popper, Tooltip, Typography } from "@mui/material";
+import { LatLngBounds, type Map } from "leaflet";
+import { useCallback } from "react";
 import { TbEye, TbEyeOff, TbZoomScan } from "react-icons/tb";
 
 interface ILayerPanelProps {
+  mapRef: React.RefObject<Map>;
   open: boolean;
   anchorEl: HTMLElement | null;
   planningAreaList?: IPlanningArea;
   visibleZones: Set<string>;
   visibleBlocks: Set<string>;
-  handleToggleZoneVisibility: (zoneId: string) => void;
-  handleZoomToGeometry: (coordinates: number[][]) => void;
-  handleToggleBlockVisibility: (blockId: string) => void;
+  setVisibleZones: (zones: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  setVisibleBlocks: (blocks: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
+  convertGeometryToLatLng: (coordinates: number[][]) => [number, number][];
 }
 
-export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, visibleBlocks, handleToggleZoneVisibility, handleZoomToGeometry, handleToggleBlockVisibility }: ILayerPanelProps) {
+export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, visibleBlocks, setVisibleZones, setVisibleBlocks, convertGeometryToLatLng, mapRef }: ILayerPanelProps) {
+  // Tạo ID fallback cho blocks không có ID hợp lệ
+  const getBlockKey = useCallback((block: IBlockPlanningArea) => {
+    return (block.block_id && block.block_id.trim() !== '') 
+      ? block.block_id 
+      : `fallback-${JSON.stringify(block.geom?.coordinates?.[0] || [])}`;
+  }, []);
+  // Sửa lại: chỉ tắt zone, không tắt block khi tắt zone
+  const handleToggleZoneVisibility = useCallback((zoneId: string) => {
+    setVisibleZones((prev: Set<string>) => {
+      const newSet = new Set(prev);
+      if (newSet.has(zoneId)) newSet.delete(zoneId);
+      else newSet.add(zoneId);
+      return newSet;
+    });
+  }, [setVisibleZones]);
+
+  // Toggle visibility của block
+  const handleToggleBlockVisibility = useCallback((blockId: string) => {
+    setVisibleBlocks((prev: Set<string>) => {
+      const newSet = new Set(prev);
+      if (newSet.has(blockId)) newSet.delete(blockId);
+      else newSet.add(blockId);
+      return newSet;
+    });
+  }, [setVisibleBlocks]);
+
+  // Zoom đến geometry
+  const handleZoomToGeometry = useCallback((coordinates: number[][]) => {
+    if (!mapRef.current || !coordinates || coordinates.length === 0) return;
+    try {
+      const latLngs = convertGeometryToLatLng(coordinates);
+      const bounds = new LatLngBounds(latLngs);
+      mapRef.current.fitBounds(bounds, {
+        padding: [20, 20],
+        maxZoom: 16
+      });
+    } catch (error) {
+      console.error('[ProjectMainMap] Error zooming to geometry:', error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convertGeometryToLatLng]);
+
   return (
     <Popper
       open={open}
@@ -156,50 +201,65 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
                     </Box>
                   </AccordionSummary>
 
-                  <AccordionDetails sx={{ p: 0 }}>
-                    {zone.blocks.length > 0 ? zone.blocks.map((block) => (
-                      <Box sx={{ pl: 2, pr: 1, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} key={block.block_id}>
-                        <Typography variant="body2">{block.block_name}</Typography>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Tooltip title="Hiển thị/Ẩn block">
+                                    <AccordionDetails sx={{ p: 0 }}>
+                    {zone.blocks.length > 0 
+                                            ? zone.blocks.map((block) => {
+                          const blockKey = getBlockKey(block);
+                          const hasValidId = block.block_id && block.block_id.trim() !== '';
+                          return (
+                            <Box sx={{ pl: 2, pr: 1, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} key={blockKey}>
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  color: !hasValidId ? 'grey.500' : 'text.primary',
+                                  fontStyle: !hasValidId ? 'italic' : 'normal'
+                                }}
+                              >
+                                {block.block_name}
+                                {!hasValidId && ' (Không có ID)'}
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <Tooltip title={!hasValidId ? "Block không có ID hợp lệ (dùng ID tự sinh)" : "Hiển thị/Ẩn block"}>
+                                  <Button
+                                    size="small"
+                                    sx={{
+                                      minWidth: 24,
+                                      height: 24,
+                                      p: 0.25,
+                                      borderRadius: '50%',
+                                      color: visibleBlocks.has(blockKey) ? 'secondary.dark' : 'grey.600',
+                                      background: 'transparent',
+                                      boxShadow: 'none',
+                                      '&:hover': {
+                                        transform: 'scale(1.1)',
+                                        boxShadow: 1,
+                                        background: 'transparent'
+                                      }
+                                    }}
+                                    onClick={() => handleToggleBlockVisibility(blockKey)}
+                                  >
+                                    {visibleBlocks.has(blockKey) ? (
+                                      <TbEye className='w-3 h-3' />
+                                    ) : (
+                                      <TbEyeOff className='w-3 h-3' />
+                                    )}
+                                  </Button>
+                                </Tooltip>
+                                                          <Tooltip title={!block.geom?.coordinates ? "Block không có geometry" : "Zoom đến block"}>
                             <Button
                               size="small"
+                              disabled={!block.geom?.coordinates}
                               sx={{
                                 minWidth: 24,
                                 height: 24,
                                 p: 0.25,
                                 borderRadius: '50%',
-                                color: visibleBlocks.has(block.block_id) ? 'secondary.dark' : 'grey.600',
+                                color: !block.geom?.coordinates ? 'grey.400' : 'text.primary',
                                 background: 'transparent',
                                 boxShadow: 'none',
                                 '&:hover': {
-                                  transform: 'scale(1.1)',
-                                  boxShadow: 1,
-                                  background: 'transparent'
-                                }
-                              }}
-                              onClick={() => handleToggleBlockVisibility(block.block_id)}
-                            >
-                              {visibleBlocks.has(block.block_id) ? (
-                                <TbEye className='w-3 h-3' />
-                              ) : (
-                                <TbEyeOff className='w-3 h-3' />
-                              )}
-                            </Button>
-                          </Tooltip>
-                          <Tooltip title="Zoom đến block">
-                            <Button
-                              size="small"
-                              sx={{
-                                minWidth: 24,
-                                height: 24,
-                                p: 0.25,
-                                borderRadius: '50%',
-                                background: 'transparent',
-                                boxShadow: 'none',
-                                '&:hover': {
-                                  transform: 'scale(1.1)',
-                                  boxShadow: 1,
+                                  transform: !block.geom?.coordinates ? 'none' : 'scale(1.1)',
+                                  boxShadow: !block.geom?.coordinates ? 'none' : 1,
                                   background: 'transparent'
                                 }
                               }}
@@ -212,15 +272,17 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
                               <TbZoomScan className='w-3 h-3' />
                             </Button>
                           </Tooltip>
-                        </Box>
-                      </Box>
-                    )) : (
-                      <Box sx={{ p: 2, textAlign: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Không có block nào trong vùng này
-                        </Typography>
-                      </Box>
-                    )}
+                              </Box>
+                            </Box>
+                          );
+                        })
+                      : (
+                          <Box sx={{ p: 2, textAlign: 'center' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Không có block nào trong vùng này
+                            </Typography>
+                          </Box>
+                        )}
                   </AccordionDetails>
                 </Accordion>
               ))}
