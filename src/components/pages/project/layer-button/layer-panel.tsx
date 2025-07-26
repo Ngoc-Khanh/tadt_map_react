@@ -1,9 +1,10 @@
-import type { IPlanningArea, IBlockPlanningArea } from "@/data/interfaces";
+import type { IBlockPlanningArea, IPlanningArea } from "@/data/interfaces";
+import { useDeleteBlockInPlanningArea, useDeleteZoneInPlanningArea } from "@/hooks";
 import { ExpandMore } from "@mui/icons-material";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Fade, Popper, Tooltip, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fade, Popper, Tooltip, Typography } from "@mui/material";
 import { LatLngBounds, type Map } from "leaflet";
-import { useCallback } from "react";
-import { TbEye, TbEyeOff, TbZoomScan } from "react-icons/tb";
+import { useCallback, useState } from "react";
+import { TbEye, TbEyeOff, TbTrash, TbZoomScan } from "react-icons/tb";
 
 interface ILayerPanelProps {
   mapRef: React.RefObject<Map>;
@@ -18,12 +19,20 @@ interface ILayerPanelProps {
 }
 
 export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, visibleBlocks, setVisibleZones, setVisibleBlocks, convertGeometryToLatLng, mapRef }: ILayerPanelProps) {
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'zone' | 'block', id: string, name: string } | null>(null);
+
+  // Hooks để xóa
+  const deleteZoneMutation = useDeleteZoneInPlanningArea();
+  const deleteBlockMutation = useDeleteBlockInPlanningArea();
+
   // Tạo ID fallback cho blocks không có ID hợp lệ
   const getBlockKey = useCallback((block: IBlockPlanningArea) => {
-    return (block.block_id && block.block_id.trim() !== '') 
-      ? block.block_id 
+    return (block.block_id && block.block_id.trim() !== '')
+      ? block.block_id
       : `fallback-${JSON.stringify(block.geom?.coordinates?.[0] || [])}`;
   }, []);
+
   // Sửa lại: chỉ tắt zone, không tắt block khi tắt zone
   const handleToggleZoneVisibility = useCallback((zoneId: string) => {
     setVisibleZones((prev: Set<string>) => {
@@ -60,157 +69,223 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convertGeometryToLatLng]);
 
+  // Mở dialog confirm xóa
+  const handleOpenDeleteConfirm = useCallback((type: 'zone' | 'block', id: string, name: string) => {
+    setDeleteTarget({ type, id, name });
+    setDeleteConfirmOpen(true);
+  }, []);
+
+  // Đóng dialog confirm
+  const handleCloseDeleteConfirm = useCallback(() => {
+    setDeleteConfirmOpen(false);
+    setDeleteTarget(null);
+  }, []);
+
+  // Thực hiện xóa
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+
+    try {
+      if (deleteTarget.type === 'zone') {
+        await deleteZoneMutation.mutateAsync(deleteTarget.id);
+        // Ẩn zone khỏi bản đồ
+        setVisibleZones(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(deleteTarget.id);
+          return newSet;
+        });
+      } else {
+        await deleteBlockMutation.mutateAsync(deleteTarget.id);
+        // Ẩn block khỏi bản đồ
+        setVisibleBlocks(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(deleteTarget.id);
+          return newSet;
+        });
+      }
+      handleCloseDeleteConfirm();
+    } catch (error) {
+      console.error(`Error deleting ${deleteTarget.type}:`, error);
+    }
+  }, [deleteTarget, deleteZoneMutation, deleteBlockMutation, setVisibleZones, setVisibleBlocks, handleCloseDeleteConfirm]);
+
   return (
-    <Popper
-      open={open}
-      anchorEl={anchorEl}
-      placement="bottom-start"
-      className='z-[1001]'
-      transition
-      modifiers={[
-        { name: 'offset', options: { offset: [0, 8] } },
-        {
-          name: 'preventOverflow',
-          options: {
-            boundary: 'viewport',
-            padding: 16,
-            altAxis: true,
-            altBoundary: true
+    <>
+      <Popper
+        open={open}
+        anchorEl={anchorEl}
+        placement="bottom-start"
+        className='z-[1001]'
+        transition
+        modifiers={[
+          { name: 'offset', options: { offset: [0, 8] } },
+          {
+            name: 'preventOverflow',
+            options: {
+              boundary: 'viewport',
+              padding: 16,
+              altAxis: true,
+              altBoundary: true
+            }
+          },
+          {
+            name: 'flip',
+            options: {
+              fallbackPlacements: ['top-start', 'bottom-end', 'top-end']
+            }
           }
-        },
-        {
-          name: 'flip',
-          options: {
-            fallbackPlacements: ['top-start', 'bottom-end', 'top-end']
-          }
-        }
-      ]}
-    >
-      {({ TransitionProps }) => (
-        <Fade {...TransitionProps} timeout={200}>
-          <Box sx={{
-            bgcolor: 'background.paper',
-            minWidth: 400,
-            maxWidth: 'min(90vw, 500px)',
-            maxHeight: 'min(80vh, 600px)',
-            borderRadius: 3,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-            border: '1px solid',
-            borderColor: 'divider',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            {/* Header */}
-            <Box sx={{ p: 3, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Box className='flex justify-between items-start'>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
-                    Lớp bản đồ
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Quản lý các lớp bản đồ trên bản đồ
-                  </Typography>
+        ]}
+      >
+        {({ TransitionProps }) => (
+          <Fade {...TransitionProps} timeout={200}>
+            <Box sx={{
+              bgcolor: 'background.paper',
+              minWidth: 400,
+              maxWidth: 'min(90vw, 500px)',
+              maxHeight: 'min(80vh, 600px)',
+              borderRadius: 3,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              border: '1px solid',
+              borderColor: 'divider',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* Header */}
+              <Box sx={{ p: 3, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Box className='flex justify-between items-start'>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
+                      Lớp bản đồ
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      Quản lý các lớp bản đồ trên bản đồ
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
-            </Box>
-            {/* Content */}
-            <Box sx={{
-              p: 2,
-              flex: 1,
-              overflowY: 'auto',
-              minHeight: 0,
-              '&::-webkit-scrollbar': { width: 6 },
-              '&::-webkit-scrollbar-track': { bgcolor: 'grey.100', borderRadius: 3 },
-              '&::-webkit-scrollbar-thumb': {
-                bgcolor: 'grey.400',
-                borderRadius: 3,
-                '&:hover': {
-                  bgcolor: 'grey.600'
+              {/* Content */}
+              <Box sx={{
+                p: 2,
+                flex: 1,
+                overflowY: 'auto',
+                minHeight: 0,
+                '&::-webkit-scrollbar': { width: 6 },
+                '&::-webkit-scrollbar-track': { bgcolor: 'grey.100', borderRadius: 3 },
+                '&::-webkit-scrollbar-thumb': {
+                  bgcolor: 'grey.400',
+                  borderRadius: 3,
+                  '&:hover': {
+                    bgcolor: 'grey.600'
+                  }
                 }
-              }
-            }}>
-              {/* Zone Accordion List */}
-              {planningAreaList?.zones.map((zone) => (
-                <Accordion key={zone.zone_id}>
-                  <AccordionSummary expandIcon={<ExpandMore />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="h6">{zone.ten_phan_khu}</Typography>
+              }}>
+                {/* Zone Accordion List */}
+                {planningAreaList?.zones.map((zone) => (
+                  <Accordion key={zone.zone_id}>
+                    <AccordionSummary expandIcon={<ExpandMore />}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="h6">{zone.ten_phan_khu}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 0.5, paddingRight: 1 }}>
+                          <Tooltip title="Hiển thị/Ẩn vùng">
+                            <Button
+                              component="span"
+                              size="small"
+                              sx={{
+                                minWidth: 32,
+                                height: 32,
+                                p: 0.5,
+                                borderRadius: '50%',
+                                color: visibleZones.has(zone.zone_id) ? 'primary.dark' : 'grey.600',
+                                background: 'transparent',
+                                boxShadow: 'none',
+                                '&:hover': {
+                                  transform: 'scale(1.1)',
+                                  boxShadow: 2,
+                                  borderColor: visibleZones.has(zone.zone_id) ? 'primary.dark' : 'grey.500',
+                                  background: 'transparent'
+                                }
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleToggleZoneVisibility(zone.zone_id)
+                              }}
+                            >
+                              {visibleZones.has(zone.zone_id) ? (
+                                <TbEye className='w-4 h-4' />
+                              ) : (
+                                <TbEyeOff className='w-4 h-4' />
+                              )}
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="Zoom đến vùng">
+                            <Button
+                              size="small"
+                              sx={{
+                                minWidth: 32,
+                                height: 32,
+                                p: 0.5,
+                                borderRadius: '50%',
+                                background: 'transparent',
+                                boxShadow: 'none',
+                                '&:hover': {
+                                  transform: 'scale(1.1)',
+                                  boxShadow: 2,
+                                  borderColor: 'primary.dark',
+                                  background: 'transparent'
+                                }
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (zone.geom?.coordinates) {
+                                  handleZoomToGeometry(zone.geom.coordinates)
+                                }
+                              }}
+                            >
+                              <TbZoomScan className='w-4 h-4' />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="Xóa vùng">
+                            <Button
+                              size="small"
+                              sx={{
+                                minWidth: 32,
+                                height: 32,
+                                p: 0.5,
+                                borderRadius: '50%',
+                                color: 'error.main',
+                                background: 'transparent',
+                                boxShadow: 'none',
+                                '&:hover': {
+                                  transform: 'scale(1.1)',
+                                  boxShadow: 2,
+                                  background: 'transparent'
+                                }
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenDeleteConfirm('zone', zone.zone_id, zone.ten_phan_khu)
+                              }}
+                            >
+                              <TbTrash className='w-4 h-4' />
+                            </Button>
+                          </Tooltip>
+                        </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', gap: 0.5, paddingRight: 1 }}>
-                        <Tooltip title="Hiển thị/Ẩn vùng">
-                          <Button
-                            component="span"
-                            size="small"
-                            sx={{
-                              minWidth: 32,
-                              height: 32,
-                              p: 0.5,
-                              borderRadius: '50%',
-                              color: visibleZones.has(zone.zone_id) ? 'primary.dark' : 'grey.600',
-                              background: 'transparent',
-                              boxShadow: 'none',
-                              '&:hover': {
-                                transform: 'scale(1.1)',
-                                boxShadow: 2,
-                                borderColor: visibleZones.has(zone.zone_id) ? 'primary.dark' : 'grey.500',
-                                background: 'transparent'
-                              }
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleToggleZoneVisibility(zone.zone_id)
-                            }}
-                          >
-                            {visibleZones.has(zone.zone_id) ? (
-                              <TbEye className='w-4 h-4' />
-                            ) : (
-                              <TbEyeOff className='w-4 h-4' />
-                            )}
-                          </Button>
-                        </Tooltip>
-                        <Tooltip title="Zoom đến vùng">
-                          <Button
-                            size="small"
-                            sx={{
-                              minWidth: 32,
-                              height: 32,
-                              p: 0.5,
-                              borderRadius: '50%',
-                              background: 'transparent',
-                              boxShadow: 'none',
-                              '&:hover': {
-                                transform: 'scale(1.1)',
-                                boxShadow: 2,
-                                borderColor: 'primary.dark',
-                                background: 'transparent'
-                              }
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (zone.geom?.coordinates) {
-                                handleZoomToGeometry(zone.geom.coordinates)
-                              }
-                            }}
-                          >
-                            <TbZoomScan className='w-4 h-4' />
-                          </Button>
-                        </Tooltip>
-                      </Box>
-                    </Box>
-                  </AccordionSummary>
+                    </AccordionSummary>
 
-                                    <AccordionDetails sx={{ p: 0 }}>
-                    {zone.blocks.length > 0 
-                                            ? zone.blocks.map((block) => {
+                    <AccordionDetails sx={{ p: 0 }}>
+                      {zone.blocks.length > 0
+                        ? zone.blocks.map((block) => {
                           const blockKey = getBlockKey(block);
                           const hasValidId = block.block_id && block.block_id.trim() !== '';
                           return (
                             <Box sx={{ pl: 2, pr: 1, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} key={blockKey}>
-                              <Typography 
-                                variant="body2" 
-                                sx={{ 
+                              <Typography
+                                variant="body2"
+                                sx={{
                                   color: !hasValidId ? 'grey.500' : 'text.primary',
                                   fontStyle: !hasValidId ? 'italic' : 'normal'
                                 }}
@@ -245,52 +320,114 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
                                     )}
                                   </Button>
                                 </Tooltip>
-                                                          <Tooltip title={!block.geom?.coordinates ? "Block không có geometry" : "Zoom đến block"}>
-                            <Button
-                              size="small"
-                              disabled={!block.geom?.coordinates}
-                              sx={{
-                                minWidth: 24,
-                                height: 24,
-                                p: 0.25,
-                                borderRadius: '50%',
-                                color: !block.geom?.coordinates ? 'grey.400' : 'text.primary',
-                                background: 'transparent',
-                                boxShadow: 'none',
-                                '&:hover': {
-                                  transform: !block.geom?.coordinates ? 'none' : 'scale(1.1)',
-                                  boxShadow: !block.geom?.coordinates ? 'none' : 1,
-                                  background: 'transparent'
-                                }
-                              }}
-                              onClick={() => {
-                                if (block.geom?.coordinates) {
-                                  handleZoomToGeometry(block.geom.coordinates)
-                                }
-                              }}
-                            >
-                              <TbZoomScan className='w-3 h-3' />
-                            </Button>
-                          </Tooltip>
+                                <Tooltip title={!block.geom?.coordinates ? "Block không có geometry" : "Zoom đến block"}>
+                                  <Button
+                                    size="small"
+                                    disabled={!block.geom?.coordinates}
+                                    sx={{
+                                      minWidth: 24,
+                                      height: 24,
+                                      p: 0.25,
+                                      borderRadius: '50%',
+                                      color: !block.geom?.coordinates ? 'grey.400' : 'text.primary',
+                                      background: 'transparent',
+                                      boxShadow: 'none',
+                                      '&:hover': {
+                                        transform: !block.geom?.coordinates ? 'none' : 'scale(1.1)',
+                                        boxShadow: !block.geom?.coordinates ? 'none' : 1,
+                                        background: 'transparent'
+                                      }
+                                    }}
+                                    onClick={() => {
+                                      if (block.geom?.coordinates) {
+                                        handleZoomToGeometry(block.geom.coordinates)
+                                      }
+                                    }}
+                                  >
+                                    <TbZoomScan className='w-3 h-3' />
+                                  </Button>
+                                </Tooltip>
+                                <Tooltip title={!hasValidId ? "Không thể xóa block không có ID hợp lệ" : "Xóa block"}>
+                                  <Button
+                                    size="small"
+                                    disabled={!hasValidId}
+                                    sx={{
+                                      minWidth: 24,
+                                      height: 24,
+                                      p: 0.25,
+                                      borderRadius: '50%',
+                                      color: !hasValidId ? 'grey.400' : 'error.main',
+                                      background: 'transparent',
+                                      boxShadow: 'none',
+                                      '&:hover': {
+                                        transform: !hasValidId ? 'none' : 'scale(1.1)',
+                                        boxShadow: !hasValidId ? 'none' : 1,
+                                        background: 'transparent'
+                                      }
+                                    }}
+                                    onClick={() => {
+                                      if (hasValidId && block.block_id) {
+                                        handleOpenDeleteConfirm('block', block.block_id, block.block_name)
+                                      }
+                                    }}
+                                  >
+                                    <TbTrash className='w-3 h-3' />
+                                  </Button>
+                                </Tooltip>
                               </Box>
                             </Box>
                           );
                         })
-                      : (
+                        : (
                           <Box sx={{ p: 2, textAlign: 'center' }}>
                             <Typography variant="body2" color="text.secondary">
                               Không có block nào trong vùng này
                             </Typography>
                           </Box>
                         )}
-                  </AccordionDetails>
-                </Accordion>
-              ))}
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </Box>
             </Box>
+          </Fade>
+        )}
+      </Popper>
 
-          </Box>
-        </Fade>
-      )}
-    </Popper>
+      {/* Dialog xác nhận xóa */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleCloseDeleteConfirm}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Xác nhận xóa {deleteTarget?.type === 'zone' ? 'vùng' : 'block'}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bạn có chắc chắn muốn xóa {deleteTarget?.type === 'zone' ? 'vùng' : 'block'} "{deleteTarget?.name}" không?
+            <br />
+            <strong>Hành động này không thể hoàn tác.</strong>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={handleCloseDeleteConfirm}
+            disabled={deleteZoneMutation.isPending || deleteBlockMutation.isPending}
+          >
+            Hủy
+          </Button>
+          <Button 
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            disabled={deleteZoneMutation.isPending || deleteBlockMutation.isPending}
+          >
+            {(deleteZoneMutation.isPending || deleteBlockMutation.isPending) ? 'Đang xóa...' : 'Xóa'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   )
 }
