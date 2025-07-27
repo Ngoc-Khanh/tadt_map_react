@@ -30,4 +30,9 @@ export const PlanningAreaAPI = {
     const res = await apiDelete<SRO<IPlanningArea>>(`/planning-area/block/${blockId}`);
     return res.data.success;
   },
+
+  async deleteBlockInPlanningAreaByName(blockName: string): Promise<boolean> {
+    const res = await apiDelete<SRO<IPlanningArea>>(`/planning-area/block/${blockName}/name`);
+    return res.data.success;
+  }
 }

@@ -8,5 +8,5 @@ export const BLockAPI = {
     if (!zoneId) throw new Error("Zone ID is required");
     const res = await apiGet<SRO<IBlock[]>>(`/c360/block/list-by-zone/${zoneId}`);
     return APIResponse(res.data);
-  },
+  }
 }

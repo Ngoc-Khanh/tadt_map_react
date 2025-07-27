@@ -18,6 +18,9 @@ export const useSavePlanningArea = () => {
     mutationFn: (data: SavePlanningAreaDto) => PlanningAreaAPI.savePlanningArea(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planning-area'] })
+    },
+    onError: (error) => {
+      console.error(error);
     }
   })
 }
@@ -28,6 +31,9 @@ export const useSavePlanningAreaZone = () => {
     mutationFn: (data: SavePlanningAreaZoneDto) => PlanningAreaAPI.savePlanningAreaZone(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planning-area'] })
+    },
+    onError: (error) => {
+      console.error(error);
     }
   })
 }
@@ -38,6 +44,9 @@ export const useDeleteZoneInPlanningArea = () => {
     mutationFn: (zoneId: string) => PlanningAreaAPI.deleteZoneInPlanningArea(zoneId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planning-area'] })
+    },
+    onError: (error) => {
+      console.error(error);
     }
   })
 }
@@ -48,6 +57,22 @@ export const useDeleteBlockInPlanningArea = () => {
     mutationFn: (blockId: string) => PlanningAreaAPI.deleteBlockInPlanningArea(blockId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planning-area'] })
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  })
+}
+
+export const useDeleteBlockInPlanningAreaByName = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (blockName: string) => PlanningAreaAPI.deleteBlockInPlanningAreaByName(blockName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['planning-area'] })
+    },
+    onError: (error) => {
+      console.error(error);
     }
   })
 }

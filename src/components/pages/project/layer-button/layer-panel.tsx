@@ -1,5 +1,5 @@
 import type { IBlockPlanningArea, IPlanningArea } from "@/data/interfaces";
-import { useDeleteBlockInPlanningArea, useDeleteZoneInPlanningArea } from "@/hooks";
+import { useDeleteBlockInPlanningArea, useDeleteBlockInPlanningAreaByName, useDeleteZoneInPlanningArea } from "@/hooks";
 import { ExpandMore } from "@mui/icons-material";
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fade, Popper, Tooltip, Typography } from "@mui/material";
 import { LatLngBounds, type Map } from "leaflet";
@@ -25,6 +25,7 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
   // Hooks để xóa
   const deleteZoneMutation = useDeleteZoneInPlanningArea();
   const deleteBlockMutation = useDeleteBlockInPlanningArea();
+  const deleteBlockByNameMutation = useDeleteBlockInPlanningAreaByName();
 
   // Tạo ID fallback cho blocks không có ID hợp lệ
   const getBlockKey = useCallback((block: IBlockPlanningArea) => {
@@ -95,7 +96,21 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
           return newSet;
         });
       } else {
-        await deleteBlockMutation.mutateAsync(deleteTarget.id);
+        // Xóa block - sử dụng ID nếu có, hoặc tên nếu không có ID
+        const blockToDelete = planningAreaList?.zones
+          .flatMap(zone => zone.blocks)
+          .find(block => block.block_id === deleteTarget.id || block.block_name === deleteTarget.name);
+
+        if (blockToDelete) {
+          if (blockToDelete.block_id && blockToDelete.block_id.trim() !== '') {
+            // Xóa theo ID
+            await deleteBlockMutation.mutateAsync(blockToDelete.block_id);
+          } else {
+            // Xóa theo tên
+            await deleteBlockByNameMutation.mutateAsync(blockToDelete.block_name);
+          }
+        }
+
         // Ẩn block khỏi bản đồ
         setVisibleBlocks(prev => {
           const newSet = new Set(prev);
@@ -107,7 +122,7 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
     } catch (error) {
       console.error(`Error deleting ${deleteTarget.type}:`, error);
     }
-  }, [deleteTarget, deleteZoneMutation, deleteBlockMutation, setVisibleZones, setVisibleBlocks, handleCloseDeleteConfirm]);
+  }, [deleteTarget, deleteZoneMutation, deleteBlockMutation, deleteBlockByNameMutation, planningAreaList, setVisibleZones, setVisibleBlocks, handleCloseDeleteConfirm]);
 
   return (
     <>
@@ -347,28 +362,27 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
                                     <TbZoomScan className='w-3 h-3' />
                                   </Button>
                                 </Tooltip>
-                                <Tooltip title={!hasValidId ? "Không thể xóa block không có ID hợp lệ" : "Xóa block"}>
+                                <Tooltip title="Xóa block">
                                   <Button
                                     size="small"
-                                    disabled={!hasValidId}
                                     sx={{
                                       minWidth: 24,
                                       height: 24,
                                       p: 0.25,
                                       borderRadius: '50%',
-                                      color: !hasValidId ? 'grey.400' : 'error.main',
+                                      color: 'error.main',
                                       background: 'transparent',
                                       boxShadow: 'none',
                                       '&:hover': {
-                                        transform: !hasValidId ? 'none' : 'scale(1.1)',
-                                        boxShadow: !hasValidId ? 'none' : 1,
+                                        transform: 'scale(1.1)',
+                                        boxShadow: 1,
                                         background: 'transparent'
                                       }
                                     }}
                                     onClick={() => {
-                                      if (hasValidId && block.block_id) {
-                                        handleOpenDeleteConfirm('block', block.block_id, block.block_name)
-                                      }
+                                      // Sử dụng ID nếu có, hoặc tên nếu không có ID
+                                      const blockId = hasValidId && block.block_id ? block.block_id : blockKey;
+                                      handleOpenDeleteConfirm('block', blockId, block.block_name)
                                     }}
                                   >
                                     <TbTrash className='w-3 h-3' />
@@ -412,13 +426,13 @@ export function LayerPanel({ open, anchorEl, planningAreaList, visibleZones, vis
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button 
+          <Button
             onClick={handleCloseDeleteConfirm}
             disabled={deleteZoneMutation.isPending || deleteBlockMutation.isPending}
           >
             Hủy
           </Button>
-          <Button 
+          <Button
             onClick={handleConfirmDelete}
             color="error"
             variant="contained"
