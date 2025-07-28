@@ -250,21 +250,21 @@ export function KMLLayer({
 
   // Create popup content
   const createPopupContent = useCallback((feature: any, assignedInfo: AssignedAreaInfo | null) => {
-    const properties = Object.entries(feature.properties || {})
-      .filter(([, value]) => value !== null && value !== undefined && value !== '')
-      .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
-      .join('<br>');
+    // const properties = Object.entries(feature.properties || {})
+    //   .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    //   .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+    //   .join('<br>');
 
     if (assignedInfo) {
       const deleteButtonId = `delete-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const statusText = assignedInfo.type === 'block' 
         ? (assignedInfo.hasBlockId ? '🟢 Hạng mục (Có Block ID)' : '🟠 Hạng mục (Tạo mới)')
         : '🟣 Phân khu';
-      
+        
+        // ${properties ? `<div style="margin-bottom: 10px; color: #64748b; font-size: 12px;">${properties}</div>` : ''}
       return {
         content: `
           <div style="font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.4;">
-            ${properties ? `<div style="margin-bottom: 10px; color: #64748b; font-size: 12px;">${properties}</div>` : ''}
             <div style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #475569; padding: 12px; border-radius: 8px; border-left: 4px solid ${assignedInfo.type === 'zone' ? '#9b59b6' : assignedInfo.hasBlockId ? '#27ae60' : '#f39c12'}; margin-bottom: 10px;">
               <div style="font-weight: 600; margin-bottom: 4px;">${statusText}</div>
               <div style="font-size: 14px; font-weight: 700; color: #1e293b;">${assignedInfo.name}</div>
@@ -284,11 +284,11 @@ export function KMLLayer({
     const description = feature.properties?.description || feature.properties?.Description || '';
     const isRanhGioi = description.includes('RANHGIOI');
     const actionButtonId = `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // ${properties ? `<div style="margin-bottom: 10px; color: #64748b; font-size: 12px;">${properties}</div>` : ''}
 
     return {
       content: `
         <div style="font-family: 'Inter', 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.4;">
-          ${properties ? `<div style="margin-bottom: 10px; color: #64748b; font-size: 12px;">${properties}</div>` : ''}
           <button id="${actionButtonId}" style="background: linear-gradient(135deg, ${isRanhGioi ? '#22c55e' : '#3b82f6'} 0%, ${isRanhGioi ? '#16a34a' : '#2563eb'} 100%); color: white; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; width: 100%; transition: all 0.2s ease; box-shadow: 0 2px 6px ${isRanhGioi ? 'rgba(34, 197, 94, 0.25)' : 'rgba(59, 130, 246, 0.25)'};"
               onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px ${isRanhGioi ? 'rgba(34, 197, 94, 0.35)' : 'rgba(59, 130, 246, 0.35)'}'" 
               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px ${isRanhGioi ? 'rgba(34, 197, 94, 0.25)' : 'rgba(59, 130, 246, 0.25)'}'">

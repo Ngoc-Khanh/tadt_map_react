@@ -402,9 +402,6 @@ export function DetailDialog({ isDialogOpen, handleCloseDialog, selectedPackage 
         <Button onClick={handleCloseDialog} variant="outlined" color="primary">
           Đóng
         </Button>
-        <Button variant="contained" color="primary">
-          Xem báo cáo chi tiết
-        </Button>
       </DialogActions>
     </Dialog>
   )

@@ -1,12 +1,11 @@
-import type { ETrangThaiType } from "@/data/enums";
 import type { IBlockPlanningArea, IPackage } from "@/data/interfaces";
-import { usePackageListByBlockId } from "@/hooks";
 import { getZoneColor } from "@/lib/progress-color";
-import { CheckCircle, Close, Error, PauseCircleOutline, TaskAlt, TrendingUp, Visibility, Warning } from "@mui/icons-material";
-import { Box, Button, Drawer, IconButton, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
+import { CheckCircle, Close, Error, PauseCircleOutline, TaskAlt, TrendingUp, Warning } from "@mui/icons-material";
+import { Box, Button, Drawer, IconButton, LinearProgress, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { DetailDialog } from "./detail-dialog";
+import { DrawerTable } from "./drawer-table";
 
 interface IMainMapDrawerProps {
   popupBlock: IBlockPlanningArea | null;
@@ -15,8 +14,6 @@ interface IMainMapDrawerProps {
 }
 
 export function MainMapDrawer({ popupBlock, selectedBlock, setSelectedBlock }: IMainMapDrawerProps) {
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchText, setSearchText] = useState('');
   const [selectedPackage, setSelectedPackage] = useState<IPackage | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -40,14 +37,6 @@ export function MainMapDrawer({ popupBlock, selectedBlock, setSelectedBlock }: I
   }));
 
   const COLORS = ['#29b6f6', '#ffa726', '#66bb6a', '#ef5350', '#bdbdbd'];
-
-  // Sử dụng hook lấy package list
-  const { data: packageList } = usePackageListByBlockId(selectedBlock?.block_id || "");
-
-  const handleViewPackage = (packageItem: IPackage) => {
-    setSelectedPackage(packageItem);
-    setIsDialogOpen(true);
-  };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -287,119 +276,7 @@ export function MainMapDrawer({ popupBlock, selectedBlock, setSelectedBlock }: I
             </Box>
           )}
 
-          <Paper elevation={1}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>STT</TableCell>
-                  <TableCell>Tên gói thầu</TableCell>
-                  <TableCell>Nhà thầu</TableCell>
-                  <TableCell>Ngày bắt đầu kế hoạch</TableCell>
-                  <TableCell>Ngày kết thúc kế hoạch</TableCell>
-                  <TableCell>Trạng thái</TableCell>
-                  <TableCell>Tiến trình kế hoạch</TableCell>
-                  <TableCell>Tiến trình thực tế</TableCell>
-                  <TableCell>Thao tác</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {packageList?.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{item.ten_goi_thau || "N/a"}</TableCell>
-                    <TableCell>{item.nha_thau || "N/a"}</TableCell>
-                    <TableCell>{item.ngay_bd_ke_hoach || "N/a"}</TableCell>
-                    <TableCell>{item.ngay_kt_ke_hoach || "N/a"}</TableCell>
-                    <TableCell>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: getZoneColor(item.trang_thai as ETrangThaiType, item.tien_do_thuc_te)
-                        }}
-                      >
-                        {item.trang_thai || "N/a"}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ position: 'relative', width: '100%' }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={item.tien_do_ke_hoach}
-                          sx={{
-                            height: 8, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.08)', '& .MuiLinearProgress-bar': {
-                              background: `linear-gradient(90deg, ${getZoneColor(item.trang_thai as ETrangThaiType, item.tien_do_ke_hoach)} 0%, ${getZoneColor(item.trang_thai as ETrangThaiType, item.tien_do_ke_hoach)}aa 100%)`,
-                            }
-                          }}
-                        />
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            color: 'white',
-                            textShadow: '0 0 2px rgba(255,255,255,0.8)'
-                          }}
-                        >
-                          {item.tien_do_ke_hoach}%
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ position: 'relative', width: '100%' }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={item.tien_do_thuc_te}
-                          sx={{
-                            height: 8, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.08)', '& .MuiLinearProgress-bar': {
-                              background: `linear-gradient(90deg, ${getZoneColor(item.trang_thai as ETrangThaiType, item.tien_do_thuc_te)} 0%, ${getZoneColor(item.trang_thai as ETrangThaiType, item.tien_do_thuc_te)}aa 100%)`,
-                            }
-                          }}
-                        />
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            color: 'white',
-                            textShadow: '0 0 2px rgba(255,255,255,0.8)'
-                          }}
-                        >
-                          {item.tien_do_thuc_te}%
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <IconButton size="small" color="primary" onClick={() => handleViewPackage(item)}>
-                        <Visibility fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            <TablePagination
-              component="div"
-              count={packageList?.length || 0}
-              page={page}
-              onPageChange={(_event, newPage) => setPage(newPage)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-              labelRowsPerPage="Số dòng / trang:"
-              rowsPerPageOptions={[5, 10, 25, { label: 'Tất cả', value: -1 }]}
-            />
-          </Paper>
+          <DrawerTable selectedBlock={selectedBlock!} setSelectedPackage={setSelectedPackage} setIsDialogOpen={setIsDialogOpen} />
         </Box>
       </Box>
 
