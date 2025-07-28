@@ -29,8 +29,8 @@ export function ProjectMainMap({ planningAreaList, isLoading }: IProjectMainMapP
     planningAreaList.zones.forEach(zone => {
       zone.blocks.forEach(block => {
         // Tạo ID fallback cho blocks không có ID
-        const blockKey = (block.block_id && block.block_id.trim() !== '') 
-          ? block.block_id 
+        const blockKey = (block.block_id && block.block_id.trim() !== '')
+          ? block.block_id
           : `fallback-${JSON.stringify(block.geom?.coordinates?.[0] || [])}`;
         blockIds.push(blockKey);
       });
@@ -54,8 +54,8 @@ export function ProjectMainMap({ planningAreaList, isLoading }: IProjectMainMapP
       planningAreaList.zones.forEach(zone => {
         zone.blocks.forEach(block => {
           // Tạo ID fallback cho blocks không có ID
-          const blockKey = (block.block_id && block.block_id.trim() !== '') 
-            ? block.block_id 
+          const blockKey = (block.block_id && block.block_id.trim() !== '')
+            ? block.block_id
             : `fallback-${JSON.stringify(block.geom?.coordinates?.[0] || [])}`;
           blockIds.push(blockKey);
         });

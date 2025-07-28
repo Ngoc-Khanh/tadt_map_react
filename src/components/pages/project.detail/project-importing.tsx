@@ -108,10 +108,10 @@ export function ProjectImporting({ projectId }: IProjectImportingProps) {
             </Box>
           )}
           <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-            Import KML/KMZ Files
+            Import Files
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-            Tải lên các file KML hoặc KMZ để hiển thị trên bản đồ
+            Tải lên các file để hiển thị trên bản đồ
           </Typography>
 
           <Stack direction="row" spacing={1}>
@@ -402,7 +402,7 @@ export function ProjectImporting({ projectId }: IProjectImportingProps) {
                 '&:hover': { boxShadow: 4 }
               }}
             >
-              Xem bản đồ KML ({successfulKMLFiles.length} file)
+              Xem bản đồ ({successfulKMLFiles.length} file)
             </Button>
           </Box>
         )}
