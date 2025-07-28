@@ -1,11 +1,12 @@
 import type { ETrangThaiType } from "@/data/enums";
-import type { IBlockPlanningArea } from "@/data/interfaces";
+import type { IBlockPlanningArea, IPackage } from "@/data/interfaces";
 import { usePackageListByBlockId } from "@/hooks";
 import { getZoneColor } from "@/lib/progress-color";
-import { CheckCircle, Close, Error, PauseCircleOutline, TaskAlt, TrendingUp, Warning } from "@mui/icons-material";
+import { CheckCircle, Close, Error, PauseCircleOutline, TaskAlt, TrendingUp, Visibility, Warning } from "@mui/icons-material";
 import { Box, Button, Drawer, IconButton, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { DetailDialog } from "./detail-dialog";
 
 interface IMainMapDrawerProps {
   popupBlock: IBlockPlanningArea | null;
@@ -17,6 +18,8 @@ export function MainMapDrawer({ popupBlock, selectedBlock, setSelectedBlock }: I
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchText, setSearchText] = useState('');
+  const [selectedPackage, setSelectedPackage] = useState<IPackage | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const statistics = [
     { label: 'Đang triển khai, đúng tiến độ', count: 15, color: 'info.light', icon: <TaskAlt color="info" /> },
@@ -40,6 +43,16 @@ export function MainMapDrawer({ popupBlock, selectedBlock, setSelectedBlock }: I
 
   // Sử dụng hook lấy package list
   const { data: packageList } = usePackageListByBlockId(selectedBlock?.block_id || "");
+
+  const handleViewPackage = (packageItem: IPackage) => {
+    setSelectedPackage(packageItem);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedPackage(null);
+  };
 
   return (
     <Drawer
@@ -90,7 +103,7 @@ export function MainMapDrawer({ popupBlock, selectedBlock, setSelectedBlock }: I
               <Typography variant="body2" color="text.secondary">
                 Mã block: {popupBlock?.block_id}
               </Typography>
-              
+
               <Box sx={{ mt: 1 }}>
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
                   <TrendingUp sx={{ fontSize: 18, color: 'text.secondary' }} />
@@ -364,7 +377,9 @@ export function MainMapDrawer({ popupBlock, selectedBlock, setSelectedBlock }: I
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Button variant="text" size="small">Xem</Button>
+                      <IconButton size="small" color="primary" onClick={() => handleViewPackage(item)}>
+                        <Visibility fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -387,6 +402,8 @@ export function MainMapDrawer({ popupBlock, selectedBlock, setSelectedBlock }: I
           </Paper>
         </Box>
       </Box>
+
+      <DetailDialog isDialogOpen={isDialogOpen} handleCloseDialog={handleCloseDialog} selectedPackage={selectedPackage} />
     </Drawer>
   )
 }

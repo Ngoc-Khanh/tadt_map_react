@@ -11,3 +11,10 @@ export const ETrangThai = {
 } as const;
 
 export type ETrangThaiType = typeof ETrangThai[keyof typeof ETrangThai];
+
+export const EFileType = {
+  KML: "kml",
+  KMZ: "kmz",
+} as const;
+
+export type EFileTypeType = typeof EFileType[keyof typeof EFileType];

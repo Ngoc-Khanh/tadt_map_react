@@ -10,3 +10,14 @@ export const usePackageListByBlockId = (blockId: string) => {
     refetchOnWindowFocus: false,
   });
 };
+
+export const usePackageDetail = (packageId: string) => {
+  return useQuery({
+    queryKey: ["package", packageId],
+    queryFn: () => PackageAPI.getPackageDetail(packageId),
+    select: (data) => Array.isArray(data) && data.length > 0 ? data[0] : null,
+    enabled: !!packageId,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  })
+}
